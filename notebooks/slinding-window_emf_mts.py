@@ -138,59 +138,6 @@ def getMoviesForRecommendation(originalData, movie_ids, group):
     
     return movie_ids_to_pred
 
-
-# def scale_predictions(raw_predictions, target_min=1, target_max=5, ref_min=0, ref_max=6):
-#     """
-#     Scale raw predictions to the target range [target_min, target_max].
-    
-#     Args:
-#         raw_predictions (array-like): The raw prediction values.
-#         target_min (float): Minimum of the target range (default: 1).
-#         target_max (float): Maximum of the target range (default: 5).
-#         ref_min (float): Reference minimum for raw predictions (default: 0.0).
-#         ref_max (float): Reference maximum for raw predictions (default: 6.0).
-    
-#     Returns:
-#         numpy.ndarray: Scaled predictions.
-#     """
-#     raw_predictions = np.array(raw_predictions)
-    
-#     if len(raw_predictions) == 0:
-#         raise ValueError("Raw predictions array is empty.")
-    
-#     # Handle outliers using IQR
-#     q1, q3 = np.percentile(raw_predictions, [25, 75])
-#     iqr = q3 - q1
-#     lower_bound = q1 - 1.5 * iqr
-#     upper_bound = q3 + 1.5 * iqr
-#     clipped_predictions = np.clip(raw_predictions, lower_bound, upper_bound)
-    
-#     # Compute min and max on clipped data
-#     min_raw = np.min(clipped_predictions)
-#     max_raw = np.max(clipped_predictions)
-    
-#     # Scale to [target_min, target_max]
-#     if max_raw == min_raw:
-#         # If all values are the same, map the constant value to the target range
-#         # using the reference range
-#         if ref_max == ref_min:
-#             # Avoid division by zero in the reference range
-#             scaled_value = (target_min + target_max) / 2  # Fallback to midpoint
-#         else:
-#             # Map the constant raw value to the target range based on its position in the reference range
-#             scaled_value = target_min + (max_raw - ref_min) * (target_max - target_min) / (ref_max - ref_min)
-#             # Ensure the scaled value is within the target range
-#             scaled_value = np.clip(scaled_value, target_min, target_max)
-#         scaled_predictions = np.full_like(raw_predictions, scaled_value)
-#     else:
-#         # Normal linear scaling
-#         scaled_predictions = target_min + (raw_predictions - min_raw) * (target_max - target_min) / (max_raw - min_raw)
-    
-#     # Ensure scaled predictions are within [target_min, target_max]
-#     scaled_predictions = np.clip(scaled_predictions, target_min, target_max)
-    
-#     return scaled_predictions
-
 def scale_predictions(raw_predictions, target_min=1, target_max=5, ref_min=0, ref_max=6, method='linear'):
     """
     Scale raw predictions to the target range [target_min, target_max].
@@ -280,7 +227,7 @@ def generate_recommendation(model, user_id_str, movie_ids_to_pred, data):
     max_raw = np.max(raw_predictions)
 
     # Apply scaling with both methods
-    scaled_linear = scale_predictions(raw_predictions, method='linear')
+    scaled_linear = scale_predictions(raw_predictions, ref_min=min_raw, ref_max=max_raw, method='linear')
 
     # # Plot the distributions
     # plt.figure(figsize=(10, 6))
