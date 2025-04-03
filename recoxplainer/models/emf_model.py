@@ -50,7 +50,6 @@ class EMFModel:
         self.criterion = EMFLoss()
 
     def fit(self, dataset_metadata):
-
         self.dataset_metadata = dataset_metadata
         self.dataset = dataset_metadata.dataset
 
@@ -72,7 +71,10 @@ class EMFModel:
                 self.dataset = self.dataset.sample(frac=1)
                 loss = []
                 for _, row in self.dataset.iterrows():
-                    p_ui = self.predict(row.userId, row.itemId)
+                    user_id = int(row.userId)  # Ensure userId is an integer
+                    item_id = int(row.itemId)  # Ensure itemId is an integer
+
+                    p_ui = self.predict(user_id, item_id)
 
                     e_ui = row.rating - p_ui
 
@@ -80,21 +82,21 @@ class EMFModel:
 
 
                     # u′i=ui+η·(2·(rij−ui·vTj)·vj−β·ui−λ·sgn(ui−vj)·Eij)
-                    delta_u = 2 * e_ui * self.embedding_item[row.itemId, :]
-                    delta_u -= self.reg_term * self.embedding_user[row.userId, :]
-                    temp = np.sign(self.embedding_item[row.itemId, :] - self.embedding_user[row.userId, :])
-                    temp *= self.expl_reg_term * self.explainability_matrix[row.userId, row.itemId]
+                    delta_u = 2 * e_ui * self.embedding_item[item_id, :]
+                    delta_u -= self.reg_term * self.embedding_user[user_id, :]
+                    temp = np.sign(self.embedding_item[item_id, :] - self.embedding_user[user_id, :])
+                    temp *= self.expl_reg_term * self.explainability_matrix[user_id, item_id]
                     delta_u -= temp
 
                     # v′j=vj+η·(2·(rij−ui·vTj)·ui−β·vj−λ·sgn(ui−vj)·Eij)
-                    delta_v = 2 * e_ui * self.embedding_user[row.userId, :]
-                    delta_v -= self.reg_term * self.embedding_item[row.itemId, :]
-                    temp = np.sign(self.embedding_user[row.userId, :] - self.embedding_item[row.itemId, :])
-                    temp *= self.expl_reg_term * self.explainability_matrix[row.userId, row.itemId]
+                    delta_v = 2 * e_ui * self.embedding_user[user_id, :]
+                    delta_v -= self.reg_term * self.embedding_item[item_id, :]
+                    temp = np.sign(self.embedding_user[user_id, :] - self.embedding_item[item_id, :])
+                    temp *= self.expl_reg_term * self.explainability_matrix[user_id, item_id]
                     delta_v -= temp
 
-                    self.embedding_user[row.userId, :] += self.learning_rate * delta_u
-                    self.embedding_item[row.itemId, :] += self.learning_rate * delta_v
+                    self.embedding_user[user_id, :] += self.learning_rate * delta_u
+                    self.embedding_item[item_id, :] += self.learning_rate * delta_v
 
                 progress.update(1)
 
@@ -136,18 +138,27 @@ class EMFModel:
         self.explainability_matrix = MinMaxScaler().fit_transform(self.explainability_matrix)
 
     def predict(self, user_id, item_id):
+        # Ensure user_id and item_id are integers or lists
+        if isinstance(user_id, np.ndarray):
+            user_id = user_id.tolist()
+        if isinstance(item_id, np.ndarray):
+            item_id = item_id.tolist()
+
         if isinstance(user_id, list) or isinstance(item_id, list):
             if not isinstance(user_id, list):
                 user_id = [user_id]
             if not isinstance(item_id, list):
                 item_id = [item_id]
 
+            # Predict for multiple users or items
+            predictions = []
             for u in user_id:
-                pred = [np.dot(self.embedding_user[u, :], self.embedding_item[i, :])
-                        for i in item_id]
+                pred = [np.dot(self.embedding_user[u, :], self.embedding_item[i, :]) for i in item_id]
+                predictions.append(pred)
+            return np.array(predictions)
         else:
-            pred = np.dot(self.embedding_user[user_id, :], self.embedding_item[item_id, :])
-        return pred
+            # Predict for a single user and item
+            return np.dot(self.embedding_user[user_id, :], self.embedding_item[item_id, :])
 
     def user_embedding(self):
         return self.embedding_user
