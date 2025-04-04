@@ -63,8 +63,8 @@ class DataReader:
                                         skiprows=self.skiprows,
                                         engine='python')
             
-            self._num_user = int(self._dataset['userId'].nunique())
-            self._num_item = int(self._dataset['itemId'].nunique())
+        self._num_user = int(self._dataset['userId'].nunique())
+        self._num_item = int(self._dataset['itemId'].nunique())
         return self._dataset
 
     @dataset.setter
@@ -136,8 +136,8 @@ class DataReader:
     def binarize(self, binary_threshold=1):
         """binarize into 0 or 1, imlicit feedback"""
 
-        self._dataset[self._dataset['rating'] > binary_threshold].rating = 1
-        self._dataset[self._dataset['rating'] <= binary_threshold].rating = 0
+        self._dataset.loc[self._dataset['rating'] > binary_threshold, 'rating'] = 1
+        self._dataset.loc[self._dataset['rating'] <= binary_threshold, 'rating'] = 0
 
     @property
     def num_user(self):
