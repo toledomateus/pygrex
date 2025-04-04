@@ -30,18 +30,18 @@ class DataReader:
             (`filepath_or_buffer`, `sep`, `names`, `skiprows`) are ignored but can still be passed.
             The DataFrame must contain columns: 'userId', 'itemId', 'rating', 'timestamp'.
         """
-        if dataframe is not None:
-            self.dataset = dataframe
-            self.filepath_or_buffer = filepath_or_buffer
-            self.sep = sep
-            self.names = names
-            self.skiprows = skiprows
-        else:
+        if dataframe is None:
             self.filepath_or_buffer = filepath_or_buffer
             self.sep = sep
             self.names = names
             self.skiprows = skiprows
             self._dataset = None
+        else:
+            self.dataset = dataframe
+            self.filepath_or_buffer = filepath_or_buffer
+            self.sep = sep
+            self.names = names
+            self.skiprows = skiprows
 
         self.groups_filepath = groups_filepath
         self._num_user = None
@@ -62,6 +62,9 @@ class DataReader:
                                         names=self.names,
                                         skiprows=self.skiprows,
                                         engine='python')
+            
+            self._num_user = int(self._dataset['userId'].nunique())
+            self._num_item = int(self._dataset['itemId'].nunique())
         return self._dataset
 
     @dataset.setter
@@ -75,19 +78,14 @@ class DataReader:
         Raises:
             ValueError: If the DataFrame lacks required columns.
         """
-        if new_data is not None:
-            # Validate required columns
-            required_columns = {'userId', 'itemId', 'rating', 'timestamp'}
-            if not required_columns.issubset(new_data.columns):
-                raise ValueError(f"DataFrame must have columns: {required_columns}")
-            self._dataset = new_data
-            self._num_user = int(new_data['userId'].nunique())
-            self._num_item = int(new_data['itemId'].nunique())
-        else:
-            self._dataset = None
-            self._num_user = None
-            self._num_item = None
-    
+        if new_data is None:
+            raise ValueError("DataFrame cannot be None")
+        # Validate required columns
+        required_columns = {'userId', 'itemId', 'rating', 'timestamp'}
+        if not required_columns.issubset(new_data.columns):
+            raise ValueError(f"DataFrame must have columns: {required_columns}")
+        self._dataset = new_data
+
     @staticmethod
     def _create_id_mapping(column: pd.Series, new_column_name: str) -> pd.DataFrame:
         """
