@@ -20,19 +20,27 @@ class MFImplicitModel:
                                    num_user=dataset.num_user,
                                    num_item=dataset.num_item))
         return True
-
+    
     @staticmethod
     def rearrange_dataset(ds, num_user, num_item):
-        # todo: fix the max to something less troublesome.
-        ds_mtr = scipy.sparse.csr_matrix((num_item, num_user))
-        ds_mtr[ds['itemId'], ds['userId']] = 1
-
+        # Create sparse matrix directly from data
+        data = np.ones(len(ds))  # Array of 1s for each interaction
+        rows = ds['userId'].values  # User IDs as row indices
+        cols = ds['itemId'].values  # Item IDs as column indices
+        
+        ds_mtr = scipy.sparse.csr_matrix(
+            (data, (rows, cols)),
+            shape=(num_user, num_item)
+        )
+        
         return ds_mtr
 
     def predict(self, user_id, item_id):
-        dot_prod = self.model.user_factors[user_id] * \
-                   self.model.item_factors[item_id]
-        return np.sum(dot_prod, axis=1)
+        if not (0 <= user_id < self.model.user_factors.shape[0]):
+            raise ValueError(f"user_id {user_id} out of bounds")
+        if not (0 <= item_id < self.model.item_factors.shape[0]):
+            raise ValueError(f"item_id {item_id} out of bounds")
+        return np.dot(self.model.user_factors[user_id], self.model.item_factors[item_id])
 
     def user_embedding(self):
         return self.model.user_factors
