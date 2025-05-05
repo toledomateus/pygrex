@@ -5,15 +5,15 @@ import os
 
 
 class DataReader:
-
-    def __init__(self,
-                 filepath_or_buffer: str,
-                 sep: str,
-                 names: list,
-                 groups_filepath: List[str],
-                 skiprows: int = 0,
-                 dataframe: Optional[pd.DataFrame] = None
-                 ):
+    def __init__(
+        self,
+        filepath_or_buffer: str,
+        sep: str,
+        names: list,
+        groups_filepath: Optional[List[str]],
+        skiprows: int = 0,
+        dataframe: Optional[pd.DataFrame] = None,
+    ):
         """
         Initialize the DataReader with either a DataFrame or file parameters.
 
@@ -57,14 +57,16 @@ class DataReader:
             pd.DataFrame: The dataset with user-item interactions.
         """
         if self._dataset is None:
-            self._dataset = pd.read_csv(filepath_or_buffer=self.filepath_or_buffer,
-                                        sep=self.sep,
-                                        names=self.names,
-                                        skiprows=self.skiprows,
-                                        engine='python')
-            
-        self._num_user = int(self._dataset['userId'].nunique())
-        self._num_item = int(self._dataset['itemId'].nunique())
+            self._dataset = pd.read_csv(
+                filepath_or_buffer=self.filepath_or_buffer,
+                sep=self.sep,
+                names=self.names,
+                skiprows=self.skiprows,
+                engine="python",
+            )
+
+        self._num_user = int(self._dataset["userId"].nunique())
+        self._num_item = int(self._dataset["itemId"].nunique())
         return self._dataset
 
     @dataset.setter
@@ -81,7 +83,7 @@ class DataReader:
         if new_data is None:
             raise ValueError("DataFrame cannot be None")
         # Validate required columns
-        required_columns = {'userId', 'itemId', 'rating', 'timestamp'}
+        required_columns = {"userId", "itemId", "rating", "timestamp"}
         if not required_columns.issubset(new_data.columns):
             raise ValueError(f"DataFrame must have columns: {required_columns}")
         self._dataset = new_data
@@ -99,45 +101,44 @@ class DataReader:
             pd.DataFrame: A DataFrame with the original and mapped IDs.
         """
         unique_values = column.drop_duplicates().reset_index(drop=True)
-        mapping = pd.DataFrame({
-            column.name: unique_values,
-            new_column_name: np.arange(len(unique_values))
-        })
+        mapping = pd.DataFrame(
+            {column.name: unique_values, new_column_name: np.arange(len(unique_values))}
+        )
         return mapping
-    
+
     def make_consecutive_ids_in_dataset(self):
-        dataset = self.dataset.rename({
-            "userId": "user_id",
-            "itemId": "item_id"
-        }, axis=1)
+        dataset = self.dataset.rename(
+            {"userId": "user_id", "itemId": "item_id"}, axis=1
+        )
 
         # Create user ID mapping
-        user_id_mapping = self._create_id_mapping(dataset['user_id'], 'userId')
-        self._dataset = pd.merge(dataset, user_id_mapping, on='user_id', how='left')
+        user_id_mapping = self._create_id_mapping(dataset["user_id"], "userId")
+        self._dataset = pd.merge(dataset, user_id_mapping, on="user_id", how="left")
 
         # Create item ID mapping
-        item_id_mapping = self._create_id_mapping(dataset['item_id'], 'itemId')
-        self._dataset = pd.merge(self._dataset, item_id_mapping, on='item_id', how='left')
+        item_id_mapping = self._create_id_mapping(dataset["item_id"], "itemId")
+        self._dataset = pd.merge(
+            self._dataset, item_id_mapping, on="item_id", how="left"
+        )
 
         # Store mappings
-        self.original_user_id = user_id_mapping.set_index('userId')
-        self.original_item_id = item_id_mapping.set_index('itemId')
-        self.new_user_id = user_id_mapping.set_index('user_id')
-        self.new_item_id = item_id_mapping.set_index('item_id')
+        self.original_user_id = user_id_mapping.set_index("userId")
+        self.original_item_id = item_id_mapping.set_index("itemId")
+        self.new_user_id = user_id_mapping.set_index("user_id")
+        self.new_item_id = item_id_mapping.set_index("item_id")
 
         # Keep only necessary columns
-        self._dataset = self._dataset[['userId', 'itemId', 'rating', 'timestamp']]
+        self._dataset = self._dataset[["userId", "itemId", "rating", "timestamp"]]
 
         # Ensure IDs are integers
-        self._dataset['userId'] = self._dataset['userId'].astype(int)
-        self._dataset['itemId'] = self._dataset['itemId'].astype(int)
-
+        self._dataset["userId"] = self._dataset["userId"].astype(int)
+        self._dataset["itemId"] = self._dataset["itemId"].astype(int)
 
     def binarize(self, binary_threshold=1):
         """binarize into 0 or 1, imlicit feedback"""
 
-        self._dataset.loc[self._dataset['rating'] > binary_threshold, 'rating'] = 1
-        self._dataset.loc[self._dataset['rating'] <= binary_threshold, 'rating'] = 0
+        self._dataset.loc[self._dataset["rating"] > binary_threshold, "rating"] = 1
+        self._dataset.loc[self._dataset["rating"] <= binary_threshold, "rating"] = 0
 
     @property
     def num_user(self):
@@ -213,7 +214,7 @@ class DataReader:
         with open(filepath, "r") as f:
             groups = [x.strip() for x in f.readlines()]
         return groups
-            
+
     def parse_group_members(self, group: str) -> List[int]:
         """
         Parse group ID to get member IDs.
@@ -225,10 +226,12 @@ class DataReader:
             List of member IDs
         """
         group = group.strip()
-        members = group.split('_')
+        members = group.split("_")
         return [int(m) for m in members]
-    
-    def get_items_for_group_recommendation(self, data: pd.DataFrame, item_ids: np.ndarray, group: List[int]) -> np.ndarray:
+
+    def get_items_for_group_recommendation(
+        self, data: pd.DataFrame, item_ids: np.ndarray, group: List[int]
+    ) -> np.ndarray:
         """
         Get items for group recommendation (those not interacted with by any group member).
 

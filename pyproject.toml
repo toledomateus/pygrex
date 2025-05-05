@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=65.0.2"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -10,108 +10,169 @@ packages = ["recoxplainer"]
 name = "recoxplainer"
 version = "0.0.3"
 description = "Explainable Recommenders"
-license = "CC-BY-NC-SA-4.0"
+license = {"file": LICENSE.md}
 requires-python = ">=3.11"
 dependencies = [
-    "ansi2html>=1.6.0",
-    "appnope>=0.1.2",
-    "argon2-cffi>=20.1.0",
-    "async-generator>=1.10",
-    "attrs>=20.3.0",
-    "backcall>=0.2.0",
-    "bleach>=3.2.3",
-    "Brotli>=1.0.9",
-    "certifi>=2020.12.5",
-    "cffi>=1.14.4",
-    "chardet>=4.0.0",
-    "click>=7.1.2",
-    "cycler>=0.10.0",
-    "dash>=1.19.0",
-    "dash-core-components>=1.15.0",
-    "dash-html-components>=1.1.2",
-    "dash-renderer>=1.9.0",
-    "dash-table>=4.11.2",
-    "decorator>=4.4.2",
-    "defusedxml>=0.6.0",
-    "entrypoints>=0.3",
-    "Flask>=1.1.2",
-    "Flask-Compress>=1.8.0",
-    "future>=0.18.2",
-    "idna>=2.10",
-    "implicit>=0.7.2",
-    "importlib-metadata>=3.4.0",
-    "ipykernel>=5.4.3",
-    "ipython>=7.16.1",
-    "ipython-genutils>=0.2.0",
-    "ipywidgets>=7.6.3",
-    "itsdangerous>=1.1.0",
-    "jedi>=0.18.0",
-    "Jinja2>=2.11.3",
-    "joblib>=1.0.0",
-    "jsonschema>=3.2.0",
-    "jupyter>=1.0.0",
-    "jupyter-client>=6.1.11",
-    "jupyter-console>=6.2.0",
-    "jupyter-core>=4.7.1",
-    "jupyter-dash>=0.4.0",
-    "jupyterlab-pygments>=0.1.2",
-    "jupyterlab-widgets>=1.0.0",
-    "kiwisolver>=1.3.1",
-    "llvmlite>=0.35.0",
-    "MarkupSafe>=1.1.1",
-    "matplotlib>=3.3.4",
-    "mistune>=0.8.4",
-    "mlxtend>=0.18.0",
-    "nbclient>=0.5.1",
-    "nbconvert>=6.0.7",
-    "nbformat>=5.1.2",
-    "nest-asyncio>=1.5.1",
-    "notebook>=6.2.0",
-    "numba>=0.52.0",
-    "numpy>=1.19.5",
-    "packaging>=20.9",
-    "pandas>=1.1.5",
-    "pandocfilters>=1.4.3",
-    "parso>=0.8.1",
-    "pexpect>=4.8.0",
-    "pickleshare>=0.7.5",
-    "Pillow>=8.1.0",
-    "plotly>=4.14.3",
-    "prometheus-client>=0.9.0",
-    "prompt-toolkit>=3.0.14",
-    "ptyprocess>=0.7.0",
-    "pycparser>=2.20",
-    "Pygments>=2.7.4",
-    "pynndescent>=0.5.1",
-    "pyparsing>=2.4.7",
-    "pyrsistent>=0.17.3",
-    "python-box>=5.2.0",
-    "python-dateutil>=2.8.1",
-    "pytz>=2020.5",
-    "PyYAML>=5.4.1",
-    "pyzmq>=22.0.2",
-    "qtconsole>=5.0.2",
-    "QtPy>=1.9.0",
-    "requests>=2.25.1",
-    "retrying>=1.3.3",
-    "scikit-learn>=0.24.1",
-    "scipy>=1.5.4",
-    "seaborn>=0.11.1",
-    "Send2Trash>=1.5.0",
-    "six>=1.15.0",
-    "terminado>=0.9.2",
-    "testpath>=0.4.4",
-    "threadpoolctl>=2.1.0",
-    "torch>=1.7.1",
-    "tornado>=6.1",
-    "tqdm>=4.56.0",
-    "traitlets>=4.3.3",
-    "typing-extensions>=3.7.4.3",
-    "umap-learn>=0.5.0",
-    "urllib3>=1.26.3",
-    "wcwidth>=0.2.5",
-    "webencodings>=0.5.1",
-    "Werkzeug>=1.0.1",
-    "widgetsnbextension>=3.5.1",
-    "zipp>=3.4.0"
+    "ansi2html",
+    "appnope",
+    "argon2-cffi",
+    "async-generator",
+    "attrs",
+    "backcall",
+    "bleach",
+    "Brotli",
+    "cffi",
+    "chardet",
+    "click",
+    "cycler",
+    "dash",
+    "dash-core-components",
+    "dash-html-components",
+    "dash-renderer",
+    "dash-table",
+    "decorator",
+    "defusedxml",
+    "entrypoints",
+    "Flask",
+    "Flask-Compress",
+    "future",
+    "implicit",
+    "importlib-metadata",
+    "ipykernel",
+    "ipython",
+    "ipython-genutils",
+    "ipywidgets",
+    "itsdangerous",
+    "jedi",
+    "joblib",
+    "jsonschema",
+    "jupyter",
+    "jupyter-client",
+    "jupyter-console",
+    "jupyter-core",
+    "jupyter-dash",
+    "jupyterlab-pygments",
+    "jupyterlab-widgets",
+    "kiwisolver",
+    "llvmlite",
+    "matplotlib",
+    "mistune",
+    "mlxtend",
+    "nbclient",
+    "nbconvert",
+    "nbformat",
+    "nest-asyncio",
+    "notebook",
+    "numba",
+    "pandas",
+    "pandocfilters",
+    "parso",
+    "pexpect",
+    "pickleshare",
+    "Pillow",
+    "plotly",
+    "prometheus-client",
+    "prompt-toolkit",
+    "ptyprocess",
+    "pycparser",
+    "pynndescent",
+    "pyparsing",
+    "pyrsistent",
+    "python-box",
+    "python-dateutil",
+    "pytz",
+    "pyzmq",
+    "qtconsole",
+    "QtPy",
+    "retrying",
+    "scikit-learn",
+    "seaborn",
+    "Send2Trash",
+    "terminado",
+    "testpath",
+    "threadpoolctl",
+    "tornado",
+    "tqdm",
+    "traitlets",
+    "umap-learn",
+    "wcwidth",
+    "webencodings",
+    "widgetsnbextension",
+    "zipp"
 ]
+
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+target-version = "py312"  # Adjust to your Python version
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+#
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future.
+docstring-code-format = false
+
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+#
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = "dynamic"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Accepts: "google", "numpy", or "pep257".
