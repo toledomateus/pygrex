@@ -1,62 +1,127 @@
-# recoXplainer
+<p align="center">
+  <a href="" rel="noopener">
+  <img width=200px height=200px src="assets/py-grex-logo.png" alt="Project logo"></a>
+</p>
 
-As recommender systems today play an important role in our online experience and are involved in a wide range of 
-decisions, multiple stakeholders demand explanations for the corresponding algorithmic predictions. 
-These demands---together with the benefits of explanations (e.g., trust, efficiency, and sometimes even persuasion)--- 
-have triggered significant interest from researchers in academia and industry. 
+<h3 align="center">PY-GREX</h3>
 
-Nonetheless, to the best of our knowledge, no comprehensive toolkit for explainable recommender systems is available 
-to the community yet. 
-Instead, researchers are frequently faced with the challenge of re-implementing prior algorithms when creating and 
-evaluating new approaches.
-Aiming to address the resulting need, we introduce __RecoXplainer__, a software toolkit 
-that includes several state-of-the-art explainability methods, and two evaluation metrics. 
+<div align="center">
+
+[![Status](https://img.shields.io/badge/status-active-success.svg)]() 
+[![GitHub Issues](https://img.shields.io/github/issues/toledomateus/py-grex.svg)](https://github.com/toledomateus/py-grex/issues) 
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/toledomateus/py-grex.svg)](https://github.com/toledomateus/py-grex/pulls) 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE) 
+
+</div>
+
+---
+
+<p align="center"> A software toolkit for explainable recommender systems, including several state-of-the-art explainability methods and evaluation metrics.
+    <br> 
+</p>
+
+## 📝 Table of Contents
+- [🧐 About ](#-about-)
+- [🏁 Getting Started ](#-getting-started-)
+  - [Prerequisites ](#-prerequisites-)
+  - [Installing  ](#-installing-)
+- [⛏️ Built Using ](#️-built-using-)
+- [✍️ Authors ](#️-authors-)
 
 
-## Install
 
-### Pre-requirements
-The following toolkits are necessary: 
+## 🧐 About <a name = "-about-"></a>
+
+Recommender systems heavily shape our digital experiences and decision-making processes Consequently, various parties involved require insight into how these systems generate predictions.
+
+This demand for explainability is multifaceted, ranging from individual user rationales to the more complex challenge of **recommender group explainability**, which seeks to clarify recommendations made for groups of users.
+
+Recognizing that explanations can enhance trust, efficiency, and even persuasive power, researchers have actively pursued this area. Yet, despite this surge in interest, the field currently lacks a standard, accessible toolkit for implementing and evaluating explainable recommendation techniques, especially for the nuanced domain of group settings. Researchers often find themselves bogged down re-implementing established methods
+ 
+Addressing this critical need, we introduce PY-GREX, a toolkit equipped with multiple state-of-the-art explainability algorithms to facilitate progress in the field.
+
+
+## 🏁 Getting Started <a name = "-getting-started-"></a>
+
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system.
+
+### Prerequisites <a name = "-prerequisites-"></a>
+
+What things you need to install the software and how to install them.
+
+The following toolkits are necessary:
 - conda
 - git
+- 
 
-### Clone and environment set-up
+```bash
+# Example: Check if conda is installed
+conda --version
+
+# Example: Check if git is installed
+git --version 
+```
+
+### Installing <a name = "-installing-"> </a>
+
+
+A step by step series of examples that tell you how to get a development environment running.
+
 Clone the repo:
-
-```buildoutcfg
-git clone https://github.com/ludovikcoba/recoxplainer.git
+```bash
+git clone https://github.com/toledomateus/py-grex.git
 ```
 
-Create environment on conda:
+Navigate into the cloned directory
 
-```buildoutcfg
-conda create -n recoxplainer python=3.11 
+```
+cd recoxplainer 
 ```
 
-RecoXplainer was developed with python 3.11. 
+Create environment on conda (PY-GREX was developed with python 3.11):
+
+```
+conda create -n py-grex python=3.11
+``` 
+
 Activate the new environment:
 
-```buildoutcfg
-conda activate recoxplainer
+```
+conda activate py-grex
 ```
 
-### Dependencies
+Install PyTorch as explained in https://github.com/pytorch/pytorch#from-source. The version used during development was without CUDA support.
 
-Install torch as explained in https://pytorch.org/, we are using the version without CUDA.
+Choose the version appropriate for your system (CPU or specific CUDA version)
 
-When torch is installed navigate to the folder where you cloned the library and run:
+When PyTorch is installed, navigate to the folder where you cloned the library and install PY-GREX and its dependencies in editable mode:
 
-Next, install the _recoxplainer_:
-```buildoutcfg
+```
 pip install -e .
 ```
-And finally run the notebooks:
 
-```buildoutcfg
+End with an example of getting some data out of the system or using it for a little demo. Run the notebooks:
+
+```
 jupyter notebook
 ```
 
-### Running times
+🎈 Usage
+After installation, the primary way to use and understand PY-GREX is by exploring the Jupyter Notebooks included in the repository. These notebooks demonstrate how to apply the various explainability methods and evaluation metrics to sample datasets.
 
-Running times for pre-processing, training, recommendation, explanation, and evaluation can be found in the `running_times.cvs' file. The reported time was calculated using a MacBook Pro 2,3 GHz Dual-Core Intel Core i5, 8 GB 2133 MHz LPDDR3.
 
+## ⛏️ Built Using <a name = "-built-using-"></a>
+Python - Core Language (v3.11)
+
+PyTorch - Deep Learning & Tensor Computation
+
+Conda - Environment & Package Management
+
+Jupyter Notebook - Examples & Demonstrations
+
+pip - Package Installer
+
+## ✍️ Authors <a name = "-authors-"></a>
+
+@mateustoledo - py-grex creator and repository owner
+@ludovikcoba - Initial work on recoxplainer
