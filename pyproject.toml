@@ -10,7 +10,7 @@ packages = ["recoxplainer"]
 name = "recoxplainer"
 version = "0.0.3"
 description = "Explainable Recommenders"
-license = {"file": LICENSE.md}
+license = {file = "LICENSE.md"}
 requires-python = ">=3.11"
 dependencies = [
     "ansi2html",
