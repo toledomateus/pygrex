@@ -1,6 +1,4 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import os
 import random
 from scipy.signal import (
     find_peaks,
@@ -9,141 +7,12 @@ from scipy.signal import (
 import numpy as np
 
 
-def plot_movie_rating_trends(
-    movie_ratings_df: pd.DataFrame,
-    item_ids_to_plot: list = None,
-    top_n_movies: int = 5,
-    output_dir: str = "movie_plots",
-    hype_periods_df: pd.DataFrame = None,
-):  # Optional: to overlay hype periods
-    """
-    Generates and saves line plots for movie rating counts over time.
-    Optionally overlays identified hype periods on the plots.
-    Plots original rating counts, hype periods are derived from (potentially normalized) analysis.
-    """
-    if movie_ratings_df.empty:
-        print(
-            "Movie ratings data (monthly aggregates) is empty. Cannot generate plots."
-        )
-        return
-
-    if not os.path.exists(output_dir):
-        try:
-            os.makedirs(output_dir)
-        except OSError as e:
-            print(f"Error creating directory {output_dir}: {e}")
-            return
-
-    actual_item_ids_to_plot = []
-    if item_ids_to_plot is not None:
-        actual_item_ids_to_plot = item_ids_to_plot
-        if not actual_item_ids_to_plot:
-            print(
-                "Warning: item_ids_to_plot was provided but is empty. No plots will be generated."
-            )
-            return
-    else:
-        if (
-            "rating_count" not in movie_ratings_df.columns
-            or "itemId" not in movie_ratings_df.columns
-        ):
-            print(
-                "Error: 'rating_count' or 'itemId' column missing in movie_ratings_df for global top N."
-            )
-            return
-
-        total_ratings_per_movie = movie_ratings_df.groupby("itemId")[
-            "rating_count"
-        ].sum()
-        actual_item_ids_to_plot = total_ratings_per_movie.nlargest(
-            top_n_movies
-        ).index.tolist()
-        if not actual_item_ids_to_plot:
-            print(
-                f"Could not determine global top {top_n_movies} movies to plot (fallback)."
-            )
-            return
-        print(
-            f"Plotting for global top {len(actual_item_ids_to_plot)} movies with most ratings (fallback): {actual_item_ids_to_plot}"
-        )
-
-    if not actual_item_ids_to_plot:
-        print("No movie IDs to plot.")
-        return
-
-    for item_id_idx, item_id in enumerate(actual_item_ids_to_plot):
-        # movie_data contains original rating_counts for plotting
-        movie_data = movie_ratings_df[movie_ratings_df["itemId"] == item_id].copy()
-
-        if movie_data.empty:
-            print(f"No monthly rating data found for itemId {item_id}. Skipping plot.")
-            continue
-
-        movie_data.sort_values("year_month", inplace=True)
-        movie_data["time_axis"] = movie_data["year_month"].dt.to_timestamp()
-
-        plt.figure(figsize=(12, 6))
-        plt.plot(
-            movie_data["time_axis"],
-            movie_data["rating_count"],
-            marker="o",
-            linestyle="-",
-            zorder=1,
-            label="Monthly Ratings",
-        )
-
-        is_first_hype_label_for_plot = True
-        if hype_periods_df is not None and not hype_periods_df.empty:
-            item_hype_periods = hype_periods_df[hype_periods_df["itemId"] == item_id]
-            for _, row in item_hype_periods.iterrows():
-                start_date = row["hype_start_month"].to_timestamp()
-                end_date = row["hype_end_month"].to_timestamp()
-                label_to_use = None
-                if is_first_hype_label_for_plot:
-                    label_to_use = "Hype Period"
-                    is_first_hype_label_for_plot = False
-                plt.axvspan(
-                    start_date,
-                    end_date,
-                    color="red",
-                    alpha=0.2,
-                    zorder=0,
-                    label=label_to_use,
-                )
-
-        plt.title(f"Monthly Rating Counts for Movie ID: {item_id}")
-        plt.xlabel("Month")
-        plt.ylabel(
-            "Number of Ratings (Original Scale)"
-        )  # Clarify y-axis is original scale
-        plt.grid(True)
-        plt.xticks(rotation=45)
-        handles, labels = plt.gca().get_legend_handles_labels()
-        if handles:
-            plt.legend()
-        plt.tight_layout()
-
-        plot_filename = os.path.join(
-            output_dir, f"movie_{item_id}_ratings_trend_hype.png"
-        )
-        try:
-            plt.savefig(plot_filename)
-            print(f"Saved plot: {plot_filename}")
-        except Exception as e:
-            print(f"Error saving plot {plot_filename}: {e}")
-        plt.close()
-
-
 def calculate_user_trending_score(
     df_path: str,
     user_id: int,
-    generate_plots: bool = False,
-    plot_item_ids: list = None,
-    plot_top_n: int = 5,
     full_df_for_user_top_n: pd.DataFrame = None,
-    # Peak parameters now apply to NORMALIZED data [0,1]
     peak_norm_min_height: float = 0.1,
-    peak_min_distance: int = 3,  # Stays in months
+    peak_min_distance: int = 3,  # in months
     peak_norm_min_prominence: float = 0.05,
     peak_width_rel_height: float = 0.5,
 ):
@@ -172,7 +41,7 @@ def calculate_user_trending_score(
             return 0.0, None
 
     if _df.empty:
-        print("Error: The DataFrame (_df) is empty. Cannot calculate score or plot.")
+        print("Error: The DataFrame (_df) is empty. Cannot calculate score.")
         return 0.0, None
 
     required_columns = [
@@ -224,22 +93,16 @@ def calculate_user_trending_score(
             normalized_ratings = (original_ratings - min_rating) / (
                 max_rating - min_rating
             )
-        elif len(original_ratings) > 0:  # All ratings are same, or only one rating
-            # If all ratings are the same (and non-zero), conceptually it's a flat line.
-            # We can set normalized to all 0s or 0.5s. If 0s, no peaks will be found if height > 0.
-            # If it's a single point, it might be a "peak" if height=0, but prominence/width are tricky.
-            # For simplicity, if flat, treat as no relative peaks.
+        if len(original_ratings) > 0:  # All ratings are same, or only one rating
             normalized_ratings = np.zeros_like(original_ratings, dtype=float)
-        else:  # No ratings for this item in group_sorted (should not happen if groupby is correct)
-            continue
 
         # --- Peak Detection on Normalized Data ---
         # Ensure there are enough data points for peak finding with distance
-        if (
-            len(normalized_ratings) < peak_min_distance * 2
-            and len(normalized_ratings) > 0
-        ):
-            pass  # Let find_peaks handle it; it might find 0 peaks.
+        # if (
+        #     len(normalized_ratings) < peak_min_distance * 2
+        #     and len(normalized_ratings) > 0
+        # ):
+        #     pass  # Let find_peaks handle it; it might find 0 peaks.
 
         # Parameters peak_norm_min_height and peak_norm_min_prominence apply to normalized_ratings
         peaks_indices, properties = find_peaks(
@@ -296,49 +159,6 @@ def calculate_user_trending_score(
                 f"User {user_id} has no ratings, and no movie hype periods. Score is 0."
             )
         return 0.0, movie_hype_periods_df
-
-    if generate_plots:
-        print(
-            "\n--- Generating Movie Rating Trend Plots (with Hype Periods from Normalized Analysis) ---"
-        )
-        ids_for_plotting = plot_item_ids
-        if ids_for_plotting is None:
-            if _df is None or not isinstance(_df, pd.DataFrame):
-                print(
-                    "Error: A valid DataFrame (_df) is required to determine user's top N movies for plotting."
-                )
-                ids_for_plotting = []
-            else:
-                user_specific_ratings = _df[_df["userId"] == user_id]
-                if not user_specific_ratings.empty:
-                    user_movie_counts = user_specific_ratings["itemId"].value_counts()
-                    ids_for_plotting = user_movie_counts.nlargest(
-                        plot_top_n
-                    ).index.tolist()
-                    if not ids_for_plotting:
-                        print(
-                            f"User {user_id} has rated movies, but couldn't determine their top {plot_top_n} to plot."
-                        )
-                    else:
-                        print(
-                            f"Plotting for top {len(ids_for_plotting)} movies most rated by user {user_id}: {ids_for_plotting}"
-                        )
-                else:
-                    print(
-                        f"User {user_id} has no ratings. Cannot determine their top movies to plot."
-                    )
-                    ids_for_plotting = []
-
-        if ids_for_plotting:
-            # Plotting function uses original counts from movie_ratings_per_month
-            plot_movie_rating_trends(
-                movie_ratings_df=movie_ratings_per_month.copy(),
-                item_ids_to_plot=ids_for_plotting,
-                hype_periods_df=movie_hype_periods_df.copy(),
-            )
-        else:
-            print("No specific movies selected for plotting.")
-        print("--- Finished Generating Plots ---\n")
 
     user_ratings = _df[_df["userId"] == user_id].copy()
 
@@ -444,9 +264,6 @@ if __name__ == "__main__":
         score, calculated_hype_periods = calculate_user_trending_score(
             df_path=csv_file_path,
             user_id=user,
-            generate_plots=True,
-            plot_item_ids=None,
-            plot_top_n=2,
             full_df_for_user_top_n=main_df_for_script.copy(),
             peak_norm_min_height=param_peak_norm_min_height,
             peak_min_distance=param_peak_min_distance,
