@@ -1,7 +1,7 @@
 base:
   data:
     test:
-      filepath_or_buffer: 'ratings.csv'
+      filepath_or_buffer: 'ratings-test.csv'
       sep: ','
       skiprows: 1
       names: [ 'userId', 'itemId', 'rating', 'timestamp']
