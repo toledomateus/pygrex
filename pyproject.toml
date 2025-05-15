@@ -90,7 +90,6 @@ dependencies = [
     "Send2Trash",
     "terminado",
     "testpath",
-    "threadpoolctl",
     "tornado",
     "torch",
     "tqdm",
@@ -109,6 +108,8 @@ dev = [
   "black>=22.0.0",
   "isort>=5.10.0",
   "coverage",
+  "threadpoolctl",
+
 ]
 
 
