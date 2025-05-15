@@ -12,7 +12,7 @@ import pandas as pd
 # Local application/library specific imports
 from recoxplainer.config import cfg
 from recoxplainer.data_reader import DataReader, GroupInteractionHandler
-from recoxplainer.models.als_model import ALS
+from pygrex.models.als_model import ALS
 
 # Third-party library imports
 from scipy import stats
