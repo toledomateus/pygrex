@@ -197,45 +197,6 @@ class DataReader:
         if self._dataset is None:
             raise ValueError("Dataset must be loaded or set before mapping IDs")
 
-        # Check if IDs are already consecutive
-        if (
-            self._dataset["userId"].min() == 0
-            and self._dataset["userId"].max() == self._num_user - 1
-            and self._dataset["itemId"].min() == 0
-            and self._dataset["itemId"].max() == self._num_item - 1
-        ):
-            print("IDs already appear to be consecutive. Skipping mapping.")
-            # Populate mapping tables even if IDs are already consecutive
-            self.original_user_id = (
-                self._dataset[["userId"]]
-                .drop_duplicates()
-                .set_index("userId")
-                .sort_index()
-            )
-            self.original_user_id["new_id"] = self.original_user_id.index
-            self.new_user_id = (
-                self.original_user_id.copy()
-                .rename(columns={"new_id": "original_id"})
-                .set_index("new_id")
-                .sort_index()
-            )
-
-            self.original_item_id = (
-                self._dataset[["itemId"]]
-                .drop_duplicates()
-                .set_index("itemId")
-                .sort_index()
-            )
-            self.original_item_id["new_id"] = self.original_item_id.index
-            self.new_item_id = (
-                self.original_item_id.copy()
-                .rename(columns={"new_id": "original_id"})
-                .set_index("new_id")
-                .sort_index()
-            )
-
-            return  # Exit if IDs are already consecutive
-
         dataset = self.dataset.copy()
 
         # Create user ID mapping
