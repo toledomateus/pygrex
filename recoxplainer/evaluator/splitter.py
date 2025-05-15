@@ -26,8 +26,9 @@ class Splitter:
         :returns train as DataReader, test as data.frames
         """
         # group items by suer id and rank them by timestamp
-        rank_latest = data.dataset.groupby(['userId'])['timestamp'] \
-            .rank(method='first', ascending=False)
+        rank_latest = data.dataset.groupby(["userId"])["timestamp"].rank(
+            method="first", ascending=False
+        )
 
         # keep in test items that are ranked higher than n_latest
         test = data.dataset[rank_latest <= n_latest]
@@ -49,26 +50,33 @@ class Splitter:
         :param frac float, fraction.
         :returns dataframe train and test
         """
-        min_nr_ratings_user = min(data.dataset['userId'].value_counts())
+        min_nr_ratings_user = min(data.dataset["userId"].value_counts())
 
         if min_nr_ratings_user < n:
-            sys.exit("split_leave_n_out: There are users with less ratings than n (required number of interactions "
-                     "in the test set).")
+            sys.exit(
+                "split_leave_n_out: There are users with less ratings than n (required number of interactions "
+                "in the test set)."
+            )
 
         if frac is not None and frac > 1:
             sys.exit("f (i.e.) fraction should be smaller than 1.")
 
-
         # group items by user id and extraxt a random number of items per user
-        grouped = data.dataset.groupby(['userId'])
+        grouped = data.dataset.groupby(["userId"])
         if frac is not None:
             test = grouped.apply(lambda x: x.sample(frac=frac))
         else:
-            test = grouped.apply(lambda x: x.sample(n=n))
+            test = grouped.sample(n=n)
 
         test = test.reset_index(drop=True)
-        train_pd = pd.merge(data.dataset, test, on=list(data.dataset.columns), how="outer", indicator=True)
-        train_pd = train_pd[train_pd['_merge'] == 'left_only']
+        train_pd = pd.merge(
+            data.dataset,
+            test,
+            on=list(data.dataset.columns),
+            how="outer",
+            indicator=True,
+        )
+        train_pd = train_pd[train_pd["_merge"] == "left_only"]
         train_pd = train_pd.drop(columns="_merge")
 
         train = copy.deepcopy(data)
@@ -78,7 +86,13 @@ class Splitter:
 
         return train, test
 
-    def rel_plus_n(self, data, negative_sample_size: int = 99, splitting: str = "latest", n: int = 1):
+    def rel_plus_n(
+        self,
+        data,
+        negative_sample_size: int = 99,
+        splitting: str = "latest",
+        n: int = 1,
+    ):
         """
         RelPlusN: We build the users test set by extracting one relevant random item ($HR_u$) from the entire set of
         rated items. Then  a set of random items with unknown relevance ($NR_u$), is extracted for each user $u$, where $u$
@@ -103,7 +117,7 @@ class Splitter:
         elif splitting == "n":
             train, test = self.split_leave_n_out(data, n)
         else:
-            sys.exit("splitting can be either \"latest\" or \"n\". ")
+            sys.exit('splitting can be either "latest" or "n". ')
 
         neg_sample = self.sample_negative(data, negative_sample_size)
 
@@ -111,20 +125,23 @@ class Splitter:
 
     @staticmethod
     def sample_negative(data, negative_sample_size):
-        """return all negative items """
+        """return all negative items"""
 
-        item_catalogue = set(data.dataset['itemId'])
+        item_catalogue = set(data.dataset["itemId"])
 
-        interact_status = data.dataset\
-            .groupby('userId')['itemId']\
-            .apply(set)\
-            .reset_index()\
-            .rename(columns={'itemId': 'interacted_items'})
-        interact_status['negative_items'] = interact_status['interacted_items']\
-            .apply(lambda x: item_catalogue - x)
-        interact_status['negative_samples'] = interact_status['negative_items']\
-            .apply(lambda x: random.sample(x, negative_sample_size))
-        interact_status = interact_status[['userId', 'negative_samples']]
+        interact_status = (
+            data.dataset.groupby("userId")["itemId"]
+            .apply(set)
+            .reset_index()
+            .rename(columns={"itemId": "interacted_items"})
+        )
+        interact_status["negative_items"] = interact_status["interacted_items"].apply(
+            lambda x: item_catalogue - x
+        )
+        interact_status["negative_samples"] = interact_status["negative_items"].apply(
+            lambda x: random.sample(x, negative_sample_size)
+        )
+        interact_status = interact_status[["userId", "negative_samples"]]
 
         userId = []
         itemId = []
@@ -133,5 +150,4 @@ class Splitter:
                 userId.append(int(row.userId))
                 itemId.append(int(row.negative_samples[i]))
 
-        return pd.DataFrame.from_dict({'userId': userId, 'itemId': itemId})
-
+        return pd.DataFrame.from_dict({"userId": userId, "itemId": itemId})
