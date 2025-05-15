@@ -5,13 +5,13 @@ from pygrex.models import ALS
 from pygrex.recommender import Recommender
 from pygrex.evaluator import Evaluator, Splitter
 from pygrex.explain import KNNPostHocExplainer
-from threadpoolctl import threadpool_limits
+# from threadpoolctl import threadpool_limits
 
 
-# Fixture to replace setUp method
-@pytest.fixture(autouse=True)
-def limit_blas_threads():
-    threadpool_limits(1, "blas")
+# # Fixture to replace setUp method
+# @pytest.fixture(autouse=True)
+# def limit_blas_threads():
+#     threadpool_limits(1, "blas")
 
 
 @pytest.fixture()
