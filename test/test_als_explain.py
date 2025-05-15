@@ -2,10 +2,9 @@ import pytest
 from recoxplainer.config import cfg
 from recoxplainer.data_reader import DataReader
 from recoxplainer.models import ALS
-from recoxplainer.explain import ALSExplainer
 from recoxplainer.recommender import Recommender
 from recoxplainer.evaluator import Evaluator, Splitter
-from recoxplainer.explain import ARPostHocExplainer, KNNPostHocExplainer
+from recoxplainer.explain import KNNPostHocExplainer
 from threadpoolctl import threadpool_limits
 
 
@@ -51,4 +50,4 @@ def test_explain_als(setup_data):
 
     # KNN Post Hoc Explainer
     knn_explainer = KNNPostHocExplainer(als, recommendations, train)
-    knn_expl = knn_explainer.explain_recommendations()
+    knn_explainer.explain_recommendations()
