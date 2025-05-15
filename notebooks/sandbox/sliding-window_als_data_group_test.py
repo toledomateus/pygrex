@@ -596,7 +596,7 @@ algo.fit(data)
 
 # Read the file with the group ids
 
-group_handler = GroupInteractionHandler("../datasets/ml-100k")
+group_handler = GroupInteractionHandler("../datasets/stratigis")
 
 all_groups = group_handler.read_groups("groupsWithHighRatings5.txt")
 
