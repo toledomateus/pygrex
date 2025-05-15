@@ -92,6 +92,7 @@ dependencies = [
     "testpath",
     "threadpoolctl",
     "tornado",
+    "torch",
     "tqdm",
     "traitlets",
     "umap-learn",
