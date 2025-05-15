@@ -69,7 +69,7 @@ A step by step series of examples that tell you how to get a development environ
 
 Clone the repo:
 ```bash
-git clone https://github.com/toledomateus/py-grex.git
+git clone https://github.com/toledomateus/pygrex.git
 ```
 
 Navigate into the cloned directory
@@ -81,13 +81,13 @@ cd pygrex
 Create environment on conda (PY-GREX was developed with python 3.11):
 
 ```
-conda create -n py-grex python=3.11
+conda create -n pygrex python=3.11
 ``` 
 
 Activate the new environment:
 
 ```
-conda activate py-grex
+conda activate pygrex
 ```
 
 Install PyTorch as explained in https://github.com/pytorch/pytorch#from-source. The version used during development was without CUDA support.

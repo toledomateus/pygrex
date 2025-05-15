@@ -64,7 +64,7 @@ class Splitter:
         # group items by user id and extraxt a random number of items per user
         grouped = data.dataset.groupby(["userId"])
         if frac is not None:
-            test = grouped.apply(lambda x: x.sample(frac=frac))
+            test = grouped.sample(frac=frac)
         else:
             test = grouped.sample(n=n)
 

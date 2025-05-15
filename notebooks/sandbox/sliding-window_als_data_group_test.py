@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 
 # Local application/library specific imports
-from recoxplainer.config import cfg
-from recoxplainer.data_reader import DataReader, GroupInteractionHandler
+from pygrex.config import cfg
+from pygrex.data_reader import DataReader, GroupInteractionHandler
 from pygrex.models.als_model import ALS
 
 # Third-party library imports

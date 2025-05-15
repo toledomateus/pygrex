@@ -2,7 +2,7 @@ import itertools
 
 import torch
 
-from recoxplainer.utils.torch_utils import use_cuda
+from pygrex.utils.torch_utils import use_cuda
 
 
 class PyTorchModel(torch.nn.Module):
@@ -11,16 +11,17 @@ class PyTorchModel(torch.nn.Module):
     Note: Subclass should implement self.model !
     """
 
-    def __init__(self,
-                 learning_rate: float,
-                 latent_dim: int,
-                 epochs: int,
-                 batch_size: int,
-                 cuda: bool,
-                 optimizer_name: str,
-                 device_id=None):
-
-        if optimizer_name not in ['sgd', 'adam', 'rmsprop']:
+    def __init__(
+        self,
+        learning_rate: float,
+        latent_dim: int,
+        epochs: int,
+        batch_size: int,
+        cuda: bool,
+        optimizer_name: str,
+        device_id=None,
+    ):
+        if optimizer_name not in ["sgd", "adam", "rmsprop"]:
             raise Exception["Wrong optimizer."]
 
         if cuda is True:
@@ -45,9 +46,9 @@ class PyTorchModel(torch.nn.Module):
         pass
 
     def predict(self, user_id, item_id):
-        if type(user_id) == 'int':
+        if type(user_id) == "int":
             user_id = [user_id]
-        if type(item_id) == 'int':
+        if type(item_id) == "int":
             item_id = [item_id]
         user_id = torch.LongTensor([user_id])
         item_id = torch.LongTensor(item_id)
@@ -60,7 +61,7 @@ class PyTorchModel(torch.nn.Module):
             return pred
 
     def user_embedding(self):
-        return self.state_dict()['embedding_user.weight'].cpu().numpy()
+        return self.state_dict()["embedding_user.weight"].cpu().numpy()
 
     def item_embedding(self):
-        return self.state_dict()['embedding_item.weight'].cpu().numpy()
+        return self.state_dict()["embedding_item.weight"].cpu().numpy()

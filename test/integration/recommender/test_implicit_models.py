@@ -1,10 +1,10 @@
 import pytest
 
-from recoxplainer.config import cfg
-from recoxplainer.data_reader.data_reader import DataReader
-from recoxplainer.models.als_model import ALS
-from recoxplainer.models.bpr_model import BPR
-from recoxplainer.recommender import Recommender
+from pygrex.config import cfg
+from pygrex.data_reader.data_reader import DataReader
+from pygrex.models.als_model import ALS
+from pygrex.models.bpr_model import BPR
+from pygrex.recommender import Recommender
 
 
 @pytest.fixture

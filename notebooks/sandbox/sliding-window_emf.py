@@ -3,9 +3,9 @@ import operator
 import itertools
 
 import pandas as pd
-from recoxplainer.config import cfg
-from recoxplainer.data_reader import DataReader
-from recoxplainer.models.emf_model import EMFModel
+from pygrex.config import cfg
+from pygrex.data_reader import DataReader
+from pygrex.models.emf_model import EMFModel
 from scipy import stats
 
 

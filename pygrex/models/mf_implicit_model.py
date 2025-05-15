@@ -12,7 +12,9 @@ class MFImplicitModel:
     def fit(self, dataset):
         self.model.fit(
             self.rearrange_dataset(
-                ds=dataset.dataset, num_user=dataset.num_user, num_item=dataset.num_item
+                ds=dataset.dataset,
+                num_user=dataset.num_user,
+                num_item=dataset.num_item,
             )
         )
         return True

@@ -1,9 +1,9 @@
 import pytest
 import torch
 
-from recoxplainer.config import cfg
-from recoxplainer.data_reader.data_reader import DataReader
-from recoxplainer.data_reader.user_item_dict import UserItemDict
+from pygrex.config import cfg
+from pygrex.data_reader.data_reader import DataReader
+from pygrex.data_reader.user_item_dict import UserItemDict
 
 
 @pytest.fixture

@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
-from unittest.mock import patch, MagicMock
-from recoxplainer.data_reader.data_reader import DataReader
+from unittest.mock import patch
+from pygrex.data_reader.data_reader import DataReader
 
 
 @pytest.fixture

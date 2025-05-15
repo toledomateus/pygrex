@@ -7,25 +7,26 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from recoxplainer.utils.torch_utils import use_cuda
-from recoxplainer.data_reader.user_item_dict import UserItemDict
-from recoxplainer.utils.torch_utils import use_optimizer
+from pygrex.utils.torch_utils import use_cuda
+from pygrex.data_reader.user_item_dict import UserItemDict
+from pygrex.utils.torch_utils import use_optimizer
 
 
 class ExplAutoencoderTorch(nn.Module):
-    def __init__(self,
-                 hidden_layer_features: int,
-                 learning_rate: float,
-                 positive_threshold: float,
-                 weight_decay: float,
-                 epochs: int,
-                 knn: int,
-                 cuda: bool,
-                 optimizer_name: str,
-                 expl: bool,
-                 device_id=None
-                 ):
-        if optimizer_name not in ['sgd', 'adam', 'rmsprop']:
+    def __init__(
+        self,
+        hidden_layer_features: int,
+        learning_rate: float,
+        positive_threshold: float,
+        weight_decay: float,
+        epochs: int,
+        knn: int,
+        cuda: bool,
+        optimizer_name: str,
+        expl: bool,
+        device_id=None,
+    ):
+        if optimizer_name not in ["sgd", "adam", "rmsprop"]:
             raise Exception["Wrong optimizer."]
         if cuda is True:
             use_cuda(True, device_id)
@@ -68,10 +69,12 @@ class ExplAutoencoderTorch(nn.Module):
 
         self.compute_explainability()
 
-        self.optimizer = use_optimizer(network=self,
-                                       learning_rate=self.learning_rate,
-                                       weight_decay=self.weight_decay,
-                                       optimizer=self.optimizer_name)
+        self.optimizer = use_optimizer(
+            network=self,
+            learning_rate=self.learning_rate,
+            weight_decay=self.weight_decay,
+            optimizer=self.optimizer_name,
+        )
 
         with tqdm(total=self.epochs) as progress:
             train_loader = self.instance_a_train_loader()
@@ -82,7 +85,7 @@ class ExplAutoencoderTorch(nn.Module):
         return True
 
     def compute_explainability(self):
-        ds = self.dataset.pivot(index='userId', columns='itemId', values='rating')
+        ds = self.dataset.pivot(index="userId", columns="itemId", values="rating")
         ds = ds.fillna(0)
         ds = sparse.csr_matrix(ds)
         sim_matrix = cosine_similarity(ds)
@@ -91,35 +94,43 @@ class ExplAutoencoderTorch(nn.Module):
         for i in range(self.dataset_metadata.num_user):
             sim_matrix[i, i] = min_val
 
-            knn_to_user_i = (-sim_matrix[i, :]).argsort()[:self.knn]
+            knn_to_user_i = (-sim_matrix[i, :]).argsort()[: self.knn]
             self.sim_users[i] = knn_to_user_i
 
-        self.explainability_matrix = np.zeros((self.dataset_metadata.num_user,
-                                               self.dataset_metadata.num_item))
+        self.explainability_matrix = np.zeros(
+            (self.dataset_metadata.num_user, self.dataset_metadata.num_item)
+        )
 
         filter_dataset_on_threshold = self.dataset[
-            self.dataset['rating'] >= self.positive_threshold
-            ]
+            self.dataset["rating"] >= self.positive_threshold
+        ]
 
         for i in range(self.dataset_metadata.num_user):
             knn_to_user_i = self.sim_users[i]
 
             rated_items_by_sim_users = filter_dataset_on_threshold[
-                filter_dataset_on_threshold['userId'].isin(knn_to_user_i)]
+                filter_dataset_on_threshold["userId"].isin(knn_to_user_i)
+            ]
 
-            sim_scores = rated_items_by_sim_users.groupby(by='itemId')
-            sim_scores = sim_scores['rating'].sum()
+            sim_scores = rated_items_by_sim_users.groupby(by="itemId")
+            sim_scores = sim_scores["rating"].sum()
             sim_scores = sim_scores.reset_index()
 
-            self.explainability_matrix[i, sim_scores.itemId] = sim_scores.rating.to_list()
+            self.explainability_matrix[i, sim_scores.itemId] = (
+                sim_scores.rating.to_list()
+            )
 
-        self.explainability_matrix = MinMaxScaler().fit_transform(self.explainability_matrix)
+        self.explainability_matrix = MinMaxScaler().fit_transform(
+            self.explainability_matrix
+        )
 
         self.explainability_matrix = torch.from_numpy(self.explainability_matrix)
 
     def instance_a_train_loader(self):
         """instance train loader for one training epoch"""
-        self.user_item_dict = UserItemDict(self.dataset, self.explainability_matrix, self.expl)
+        self.user_item_dict = UserItemDict(
+            self.dataset, self.explainability_matrix, self.expl
+        )
         return DataLoader(self.user_item_dict, shuffle=True)
 
     def train_an_epoch(self, train_loader):
@@ -155,9 +166,9 @@ class ExplAutoencoderTorch(nn.Module):
         return reconstructed_ratings
 
     def predict(self, user_id, item_id):
-        if type(user_id) == 'int':
+        if type(user_id) == "int":
             user_id = [user_id]
-        if type(item_id) == 'int':
+        if type(item_id) == "int":
             item_id = [item_id]
         with torch.no_grad():
             if self.cuda:
