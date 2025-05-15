@@ -1,0 +1,13 @@
+[run]
+source = recoxplainer
+branch = true
+omit =
+    test/*
+    */__init__.py
+
+[report]
+show_missing = true
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if __name__ == .__main__.:
