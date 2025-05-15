@@ -1,5 +1,10 @@
 base:
   data:
+    testdata:
+      filepath_or_buffer: 'datasets/fake_data.csv'
+      sep: '\t'
+      skiprows: 1
+      names: [ 'userId', 'itemId', 'rating', 'timestamp']
     test:
       filepath_or_buffer: 'ratings.csv'
       sep: ','
