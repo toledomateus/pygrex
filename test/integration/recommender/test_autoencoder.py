@@ -1,9 +1,9 @@
 import pytest
 
-from recoxplainer.config import cfg
-from recoxplainer.data_reader.data_reader import DataReader
-from recoxplainer.models.autoencoder_model import ExplAutoencoderTorch
-from recoxplainer.recommender import Recommender
+from pygrex.config import cfg
+from pygrex.data_reader.data_reader import DataReader
+from pygrex.models.autoencoder_model import ExplAutoencoderTorch
+from pygrex.recommender import Recommender
 
 
 @pytest.fixture

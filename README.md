@@ -75,7 +75,7 @@ git clone https://github.com/toledomateus/py-grex.git
 Navigate into the cloned directory
 
 ```
-cd recoxplainer 
+cd pygrex 
 ```
 
 Create environment on conda (PY-GREX was developed with python 3.11):

@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 
 # Local application/library specific imports
-from recoxplainer.config import cfg
-from recoxplainer.data_reader import DataReader
-from recoxplainer.models.als_model import ALS
+from pygrex.config import cfg
+from pygrex.data_reader import DataReader
+from pygrex.models.als_model import ALS
 
 # Third-party library imports
 from scipy import stats

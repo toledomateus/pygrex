@@ -1,5 +1,5 @@
 [run]
-source = recoxplainer
+source = pygrex
 branch = true
 omit =
     test/*

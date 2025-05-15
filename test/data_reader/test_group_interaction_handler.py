@@ -6,7 +6,7 @@ import tempfile
 import shutil
 from unittest.mock import patch
 
-from recoxplainer.data_reader import DataReader, GroupInteractionHandler
+from pygrex.data_reader import DataReader, GroupInteractionHandler
 
 
 @pytest.fixture
@@ -142,7 +142,7 @@ def test_get_group_members(test_environment):
         handler.get_group_members(123)
 
 
-@patch("recoxplainer.data_reader.DataReader", spec=DataReader)
+@patch("pygrex.data_reader.DataReader", spec=DataReader)
 def test_create_modified_dataset(mock_data_reader, test_environment):
     """Test creating a modified dataset."""
     mock_reader = mock_data_reader()
@@ -174,7 +174,7 @@ def test_create_modified_dataset(mock_data_reader, test_environment):
         )
 
 
-@patch("recoxplainer.data_reader.DataReader", spec=DataReader)
+@patch("pygrex.data_reader.DataReader", spec=DataReader)
 def test_get_rated_items_by_all_groupmembers(mock_data_reader, test_environment):
     """Test getting items rated by any group member."""
     mock_reader = mock_data_reader()
@@ -189,7 +189,7 @@ def test_get_rated_items_by_all_groupmembers(mock_data_reader, test_environment)
     np.testing.assert_array_equal(np.sort(rated_items), np.sort(expected_items))
 
 
-@patch("recoxplainer.data_reader.DataReader", spec=DataReader)
+@patch("pygrex.data_reader.DataReader", spec=DataReader)
 def test_get_common_rated_items(mock_data_reader, test_environment):
     """Test getting items rated by all group members."""
     mock_reader = mock_data_reader()
@@ -229,7 +229,7 @@ def test_get_items_for_group_recommendation(test_environment):
     np.testing.assert_array_equal(np.sort(result), np.sort(expected))
 
 
-@patch("recoxplainer.data_reader.DataReader", spec=DataReader)
+@patch("pygrex.data_reader.DataReader", spec=DataReader)
 def test_get_group_preferences(mock_data_reader, test_environment):
     """Test getting preferences for group members."""
     mock_reader = mock_data_reader()
@@ -243,7 +243,7 @@ def test_get_group_preferences(mock_data_reader, test_environment):
     assert prefs.userId.isin([1, 2]).all()
 
 
-@patch("recoxplainer.data_reader.DataReader", spec=DataReader)
+@patch("pygrex.data_reader.DataReader", spec=DataReader)
 def test_get_group_preferences_edge_cases(mock_data_reader, test_environment):
     """Test get_group_preferences with string IDs and empty group."""
     mock_reader = mock_data_reader()

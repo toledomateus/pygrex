@@ -1,10 +1,10 @@
 import pytest
-from recoxplainer.config import cfg
-from recoxplainer.data_reader import DataReader
-from recoxplainer.models import ALS
-from recoxplainer.recommender import Recommender
-from recoxplainer.evaluator import Evaluator, Splitter
-from recoxplainer.explain import KNNPostHocExplainer
+from pygrex.config import cfg
+from pygrex.data_reader import DataReader
+from pygrex.models import ALS
+from pygrex.recommender import Recommender
+from pygrex.evaluator import Evaluator, Splitter
+from pygrex.explain import KNNPostHocExplainer
 from threadpoolctl import threadpool_limits
 
 

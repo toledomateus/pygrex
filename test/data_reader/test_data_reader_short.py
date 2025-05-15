@@ -1,7 +1,7 @@
 import pytest
 
-from recoxplainer.config import cfg
-from recoxplainer.data_reader.data_reader import DataReader
+from pygrex.config import cfg
+from pygrex.data_reader.data_reader import DataReader
 
 
 @pytest.fixture

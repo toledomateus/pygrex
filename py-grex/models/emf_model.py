@@ -7,9 +7,9 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from recoxplainer.data_reader.user_item_rating_dataset import UserItemRatingDataset
-from recoxplainer.utils.emp_loss import EMFLoss
-from recoxplainer.utils.torch_utils import use_optimizer
+from pygrex.data_reader.user_item_rating_dataset import UserItemRatingDataset
+from pygrex.utils.emp_loss import EMFLoss
+from pygrex.utils.torch_utils import use_optimizer
 from .py_torch_model import PyTorchModel
 
 

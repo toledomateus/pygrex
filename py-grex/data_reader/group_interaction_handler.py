@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from recoxplainer.data_reader.data_reader import DataReader
+from pygrex.data_reader.data_reader import DataReader
 
 
 class GroupInteractionHandler:

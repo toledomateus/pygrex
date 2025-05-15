@@ -22,7 +22,7 @@ jobs:
     - name: Run tests with coverage
       run: |
         pytest test -v
-        coverage run --source=recoxplainer --branch -m pytest 
+        coverage run --source=pygrex --branch -m pytest 
         coverage report -m
         coverage xml
 
