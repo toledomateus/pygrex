@@ -12,18 +12,18 @@ from .py_torch_model import PyTorchModel
 
 
 class GMFModel(PyTorchModel):
-
-    def __init__(self,
-                 learning_rate: int,
-                 weight_decay: int,
-                 latent_dim: int,
-                 epochs: int,
-                 num_negative: int,
-                 batch_size: int,
-                 cuda: bool,
-                 optimizer_name: str,
-                 device_id=None):
-
+    def __init__(
+        self,
+        learning_rate: int,
+        weight_decay: int,
+        latent_dim: int,
+        epochs: int,
+        num_negative: int,
+        batch_size: int,
+        cuda: bool,
+        optimizer_name: str,
+        device_id=None,
+    ):
         super().__init__(
             learning_rate=learning_rate,
             latent_dim=latent_dim,
@@ -31,45 +31,46 @@ class GMFModel(PyTorchModel):
             batch_size=batch_size,
             cuda=cuda,
             optimizer_name=optimizer_name,
-            device_id=device_id)
+            device_id=device_id,
+        )
 
         self.negative_sample_size = num_negative
         self.weight_decay = weight_decay
 
         self.affine_output = torch.nn.Linear(
-            in_features=self.latent_dim,
-            out_features=1)
+            in_features=self.latent_dim, out_features=1
+        )
         self.logistic = torch.nn.Sigmoid()
 
         self.criterion = nn.BCELoss()
 
     def fit(self, dataset_metadata):
-
-        self.optimizer = use_optimizer(network=self,
-                                       weight_decay=self.weight_decay,
-                                       learning_rate=self.learning_rate,
-                                       optimizer=self.optimizer_name
-                                       )
+        self.optimizer = use_optimizer(
+            network=self,
+            weight_decay=self.weight_decay,
+            learning_rate=self.learning_rate,
+            optimizer=self.optimizer_name,
+        )
         dataset = dataset_metadata.dataset
 
         num_users = dataset_metadata.num_user
         num_items = dataset_metadata.num_item
 
         self.embedding_user = torch.nn.Embedding(
-            num_embeddings=num_users,
-            embedding_dim=self.latent_dim)
+            num_embeddings=num_users, embedding_dim=self.latent_dim
+        )
 
         self.embedding_item = torch.nn.Embedding(
-            num_embeddings=num_items,
-            embedding_dim=self.latent_dim)
+            num_embeddings=num_items, embedding_dim=self.latent_dim
+        )
 
         self.negatives = self._sample_negative(dataset)
 
         with tqdm(total=self.epochs) as progress:
             for epoch in range(self.epochs):
-                train_loader = self.instance_a_train_loader(dataset,
-                                                            self.negative_sample_size,
-                                                            self.batch_size)
+                train_loader = self.instance_a_train_loader(
+                    dataset, self.negative_sample_size, self.batch_size
+                )
                 loss = self.train_an_epoch(train_loader)
                 progress.update(1)
                 progress.set_postfix({"loss": loss})
@@ -79,9 +80,13 @@ class GMFModel(PyTorchModel):
     def instance_a_train_loader(self, dataset, num_negatives, batch_size):
         """instance train loader for one training epoch"""
         users, items, ratings = [], [], []
-        train_ratings = pd.merge(dataset, self.negatives[['userId', 'negative_items']], on='userId')
-        train_ratings['negatives'] = train_ratings['negative_items']\
-            .apply(lambda x: random.sample(x, num_negatives))
+        train_ratings = pd.merge(
+            dataset, self.negatives[["userId", "negative_items"]], on="userId"
+        )
+        train_ratings["negatives"] = train_ratings["negative_items"].apply(
+            lambda x: random.sample(list(x), num_negatives)
+        )
+
         for row in train_ratings.itertuples():
             users.append(int(row.userId))
             items.append(int(row.itemId))
@@ -90,9 +95,11 @@ class GMFModel(PyTorchModel):
                 users.append(int(row.userId))
                 items.append(int(row.negatives[i]))
                 ratings.append(float(0))  # negative samples get 0 rating
-        dataset = UserItemRatingDataset(user_tensor=torch.LongTensor(users),
-                                        item_tensor=torch.LongTensor(items),
-                                        target_tensor=torch.FloatTensor(ratings))
+        dataset = UserItemRatingDataset(
+            user_tensor=torch.LongTensor(users),
+            item_tensor=torch.LongTensor(items),
+            target_tensor=torch.FloatTensor(ratings),
+        )
         return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     def train_an_epoch(self, train_loader):
@@ -121,15 +128,17 @@ class GMFModel(PyTorchModel):
 
     def _sample_negative(self, ratings):
         """return all negative items & 100 sampled negative items"""
-        interact_status = ratings \
-            .groupby('userId')['itemId'] \
-            .apply(set) \
-            .reset_index() \
-            .rename(columns={'itemId': 'interacted_items'})
+        interact_status = (
+            ratings.groupby("userId")["itemId"]
+            .apply(set)
+            .reset_index()
+            .rename(columns={"itemId": "interacted_items"})
+        )
         self.item_catalogue = set(ratings.itemId)
-        interact_status['negative_items'] = interact_status['interacted_items'] \
-            .apply(lambda x: self.item_catalogue - x)
-        return interact_status[['userId', 'negative_items']]
+        interact_status["negative_items"] = interact_status["interacted_items"].apply(
+            lambda x: self.item_catalogue - x
+        )
+        return interact_status[["userId", "negative_items"]]
 
     def forward(self, user_indices, item_indices):
         user_embedding = self.embedding_user(user_indices)
@@ -138,4 +147,3 @@ class GMFModel(PyTorchModel):
         dot = self.affine_output(element_product)
         rating = self.logistic(dot)
         return rating
-

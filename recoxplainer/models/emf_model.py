@@ -14,17 +14,16 @@ from .py_torch_model import PyTorchModel
 
 
 class EMFModel:
-
-    def __init__(self,
-                 learning_rate: float,
-                 reg_term: float,
-                 expl_reg_term: float,
-                 positive_threshold: float,
-                 latent_dim: int,
-                 epochs: int,
-                 knn: int
-                 ):
-
+    def __init__(
+        self,
+        learning_rate: float,
+        reg_term: float,
+        expl_reg_term: float,
+        positive_threshold: float,
+        latent_dim: int,
+        epochs: int,
+        knn: int,
+    ):
         self.latent_dim = latent_dim
         self.learning_rate = learning_rate
         self.epochs = epochs
@@ -43,9 +42,7 @@ class EMFModel:
         self.explainability_matrix = None
         self.sim_users = {}
 
-        self.affine_output = nn.Linear(
-            in_features=self.latent_dim,
-            out_features=1)
+        self.affine_output = nn.Linear(in_features=self.latent_dim, out_features=1)
 
         self.criterion = EMFLoss()
 
@@ -56,13 +53,13 @@ class EMFModel:
         num_users = self.dataset_metadata.num_user
         num_items = self.dataset_metadata.num_item
 
-        self.embedding_user = np.random.uniform(low=0,
-                                                high=0.5/self.latent_dim,
-                                                size=(num_users, self.latent_dim))
+        self.embedding_user = np.random.uniform(
+            low=0, high=0.5 / self.latent_dim, size=(num_users, self.latent_dim)
+        )
 
-        self.embedding_item = np.random.uniform(low=0,
-                                                high=0.5/self.latent_dim,
-                                                size=(num_items, self.latent_dim))
+        self.embedding_item = np.random.uniform(
+            low=0, high=0.5 / self.latent_dim, size=(num_items, self.latent_dim)
+        )
 
         self.compute_explainability()
 
@@ -78,21 +75,32 @@ class EMFModel:
 
                     e_ui = row.rating - p_ui
 
-                    loss.append(e_ui ** 2)
-
+                    loss.append(e_ui**2)
 
                     # u′i=ui+η·(2·(rij−ui·vTj)·vj−β·ui−λ·sgn(ui−vj)·Eij)
                     delta_u = 2 * e_ui * self.embedding_item[item_id, :]
                     delta_u -= self.reg_term * self.embedding_user[user_id, :]
-                    temp = np.sign(self.embedding_item[item_id, :] - self.embedding_user[user_id, :])
-                    temp *= self.expl_reg_term * self.explainability_matrix[user_id, item_id]
+                    temp = np.sign(
+                        self.embedding_item[item_id, :]
+                        - self.embedding_user[user_id, :]
+                    )
+                    temp *= (
+                        self.expl_reg_term
+                        * self.explainability_matrix[user_id, item_id]
+                    )
                     delta_u -= temp
 
                     # v′j=vj+η·(2·(rij−ui·vTj)·ui−β·vj−λ·sgn(ui−vj)·Eij)
                     delta_v = 2 * e_ui * self.embedding_user[user_id, :]
                     delta_v -= self.reg_term * self.embedding_item[item_id, :]
-                    temp = np.sign(self.embedding_user[user_id, :] - self.embedding_item[item_id, :])
-                    temp *= self.expl_reg_term * self.explainability_matrix[user_id, item_id]
+                    temp = np.sign(
+                        self.embedding_user[user_id, :]
+                        - self.embedding_item[item_id, :]
+                    )
+                    temp *= (
+                        self.expl_reg_term
+                        * self.explainability_matrix[user_id, item_id]
+                    )
                     delta_v -= temp
 
                     self.embedding_user[user_id, :] += self.learning_rate * delta_u
@@ -100,11 +108,11 @@ class EMFModel:
 
                 progress.update(1)
 
-                progress.set_postfix({"MSE": sum(loss)/len(loss)})
+                progress.set_postfix({"MSE": sum(loss) / len(loss)})
         return True
 
     def compute_explainability(self):
-        ds = self.dataset.pivot(index='userId', columns='itemId', values='rating')
+        ds = self.dataset.pivot(index="userId", columns="itemId", values="rating")
         ds = ds.fillna(0)
         ds = sparse.csr_matrix(ds)
         sim_matrix = cosine_similarity(ds)
@@ -113,29 +121,35 @@ class EMFModel:
         for i in range(self.dataset_metadata.num_user):
             sim_matrix[i, i] = min_val
 
-            knn_to_user_i = (-sim_matrix[i, :]).argsort()[:self.knn]
+            knn_to_user_i = (-sim_matrix[i, :]).argsort()[: self.knn]
             self.sim_users[i] = knn_to_user_i
 
-        self.explainability_matrix = np.zeros((self.dataset_metadata.num_user,
-                                               self.dataset_metadata.num_item))
+        self.explainability_matrix = np.zeros(
+            (self.dataset_metadata.num_user, self.dataset_metadata.num_item)
+        )
 
         filter_dataset_on_threshold = self.dataset[
-            self.dataset['rating'] >= self.positive_threshold
-            ]
+            self.dataset["rating"] >= self.positive_threshold
+        ]
 
         for i in range(self.dataset_metadata.num_user):
             knn_to_user_i = self.sim_users[i]
 
             rated_items_by_sim_users = filter_dataset_on_threshold[
-                filter_dataset_on_threshold['userId'].isin(knn_to_user_i)]
+                filter_dataset_on_threshold["userId"].isin(knn_to_user_i)
+            ]
 
-            sim_scores = rated_items_by_sim_users.groupby(by='itemId')
-            sim_scores = sim_scores['rating'].sum()
+            sim_scores = rated_items_by_sim_users.groupby(by="itemId")
+            sim_scores = sim_scores["rating"].sum()
             sim_scores = sim_scores.reset_index()
 
-            self.explainability_matrix[i, sim_scores.itemId] = sim_scores.rating.to_list()
+            self.explainability_matrix[i, sim_scores.itemId] = (
+                sim_scores.rating.to_list()
+            )
 
-        self.explainability_matrix = MinMaxScaler().fit_transform(self.explainability_matrix)
+        self.explainability_matrix = MinMaxScaler().fit_transform(
+            self.explainability_matrix
+        )
 
     def predict(self, user_id, item_id):
         # Ensure user_id and item_id are integers or lists
@@ -153,12 +167,22 @@ class EMFModel:
             # Predict for multiple users or items
             predictions = []
             for u in user_id:
-                pred = [np.dot(self.embedding_user[u, :], self.embedding_item[i, :]) for i in item_id]
+                pred = [
+                    np.dot(self.embedding_user[u, :], self.embedding_item[i, :])
+                    for i in item_id
+                ]
                 predictions.append(pred)
-            return np.array(predictions)
+            predictions = np.array(predictions)
+            # Ensure the output is flattened if only one user or only one item
+            if len(user_id) == 1 or len(item_id) == 1:
+                predictions = predictions.flatten()
+
+            return predictions
         else:
             # Predict for a single user and item
-            return np.dot(self.embedding_user[user_id, :], self.embedding_item[item_id, :])
+            return np.dot(
+                self.embedding_user[user_id, :], self.embedding_item[item_id, :]
+            )
 
     def user_embedding(self):
         return self.embedding_user
@@ -168,23 +192,22 @@ class EMFModel:
 
 
 class EMFTorchModel(PyTorchModel):
-
-    def __init__(self,
-                 learning_rate: float,
-                 reg_term: float,
-                 expl_reg_term: float,
-                 positive_threshold: float,
-                 momentum: float,
-                 weight_decay: float,
-                 latent_dim: int,
-                 epochs: int,
-                 batch_size: int,
-                 knn: int,
-                 cuda: bool,
-                 optimizer_name: str,
-                 device_id=None
-                 ):
-
+    def __init__(
+        self,
+        learning_rate: float,
+        reg_term: float,
+        expl_reg_term: float,
+        positive_threshold: float,
+        momentum: float,
+        weight_decay: float,
+        latent_dim: int,
+        epochs: int,
+        batch_size: int,
+        knn: int,
+        cuda: bool,
+        optimizer_name: str,
+        device_id=None,
+    ):
         super().__init__(
             learning_rate=learning_rate,
             latent_dim=latent_dim,
@@ -192,7 +215,7 @@ class EMFTorchModel(PyTorchModel):
             batch_size=batch_size,
             cuda=cuda,
             optimizer_name=optimizer_name,
-            device_id=device_id
+            device_id=device_id,
         )
 
         self.reg_term = reg_term
@@ -205,14 +228,11 @@ class EMFTorchModel(PyTorchModel):
         self.explainability_matrix = None
         self.sim_users = {}
 
-        self.affine_output = nn.Linear(
-            in_features=self.latent_dim,
-            out_features=1)
+        self.affine_output = nn.Linear(in_features=self.latent_dim, out_features=1)
 
         self.criterion = EMFLoss()
 
     def fit(self, dataset_metadata):
-
         self.dataset_metadata = dataset_metadata
         self.dataset = dataset_metadata.dataset
 
@@ -220,20 +240,22 @@ class EMFTorchModel(PyTorchModel):
         num_items = self.dataset_metadata.num_item
 
         self.embedding_user = nn.Embedding(
-            num_embeddings=num_users,
-            embedding_dim=self.latent_dim)
+            num_embeddings=num_users, embedding_dim=self.latent_dim
+        )
 
         self.embedding_item = nn.Embedding(
-            num_embeddings=num_items,
-            embedding_dim=self.latent_dim)
+            num_embeddings=num_items, embedding_dim=self.latent_dim
+        )
 
         self.compute_explainability()
 
-        self.optimizer = use_optimizer(network=self,
-                                       learning_rate=self.learning_rate,
-                                       momentum=self.momentum,
-                                       weight_decay=self.weight_decay,
-                                       optimizer=self.optimizer_name)
+        self.optimizer = use_optimizer(
+            network=self,
+            learning_rate=self.learning_rate,
+            momentum=self.momentum,
+            weight_decay=self.weight_decay,
+            optimizer=self.optimizer_name,
+        )
 
         with tqdm(total=self.epochs) as progress:
             for epoch in range(self.epochs):
@@ -244,7 +266,7 @@ class EMFTorchModel(PyTorchModel):
         return True
 
     def compute_explainability(self):
-        ds = self.dataset.pivot(index='userId', columns='itemId', values='rating')
+        ds = self.dataset.pivot(index="userId", columns="itemId", values="rating")
         ds = ds.fillna(0)
         ds = sparse.csr_matrix(ds)
         sim_matrix = cosine_similarity(ds)
@@ -253,37 +275,45 @@ class EMFTorchModel(PyTorchModel):
         for i in range(self.dataset_metadata.num_user):
             sim_matrix[i, i] = min_val
 
-            knn_to_user_i = (-sim_matrix[i, :]).argsort()[:self.knn]
+            knn_to_user_i = (-sim_matrix[i, :]).argsort()[: self.knn]
             self.sim_users[i] = knn_to_user_i
 
-        self.explainability_matrix = np.zeros((self.dataset_metadata.num_user,
-                                               self.dataset_metadata.num_item))
+        self.explainability_matrix = np.zeros(
+            (self.dataset_metadata.num_user, self.dataset_metadata.num_item)
+        )
 
         filter_dataset_on_threshold = self.dataset[
-            self.dataset['rating'] >= self.positive_threshold
-            ]
+            self.dataset["rating"] >= self.positive_threshold
+        ]
 
         for i in range(self.dataset_metadata.num_user):
             knn_to_user_i = self.sim_users[i]
 
             rated_items_by_sim_users = filter_dataset_on_threshold[
-                filter_dataset_on_threshold['userId'].isin(knn_to_user_i)]
+                filter_dataset_on_threshold["userId"].isin(knn_to_user_i)
+            ]
 
-            sim_scores = rated_items_by_sim_users.groupby(by='itemId')
-            sim_scores = sim_scores['rating'].sum()
+            sim_scores = rated_items_by_sim_users.groupby(by="itemId")
+            sim_scores = sim_scores["rating"].sum()
             sim_scores = sim_scores.reset_index()
 
-            self.explainability_matrix[i, sim_scores.itemId] = sim_scores.rating.to_list()
+            self.explainability_matrix[i, sim_scores.itemId] = (
+                sim_scores.rating.to_list()
+            )
 
-        self.explainability_matrix = MinMaxScaler().fit_transform(self.explainability_matrix)
+        self.explainability_matrix = MinMaxScaler().fit_transform(
+            self.explainability_matrix
+        )
 
         self.explainability_matrix = torch.from_numpy(self.explainability_matrix)
 
     def instance_a_train_loader(self, batch_size):
         """instance train loader for one training epoch"""
-        dataset = UserItemRatingDataset(user_tensor=torch.LongTensor(self.dataset.userId),
-                                        item_tensor=torch.LongTensor(self.dataset.itemId),
-                                        target_tensor=torch.FloatTensor(self.dataset.rating))
+        dataset = UserItemRatingDataset(
+            user_tensor=torch.LongTensor(self.dataset.userId),
+            item_tensor=torch.LongTensor(self.dataset.itemId),
+            target_tensor=torch.FloatTensor(self.dataset.rating),
+        )
         return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     def train_an_epoch(self, train_loader):
@@ -310,13 +340,15 @@ class EMFTorchModel(PyTorchModel):
         user_embeddings = self.embedding_user(users)
         item_embeddings = self.embedding_item(items)
 
-        loss = self.criterion(ratings_pred=ratings_pred,
-                              ratings=ratings,
-                              u=user_embeddings,
-                              v=item_embeddings,
-                              reg_term=self.reg_term,
-                              expl=self.explainability_matrix[users, items],
-                              expl_reg_term=self.expl_reg_term)
+        loss = self.criterion(
+            ratings_pred=ratings_pred,
+            ratings=ratings,
+            u=user_embeddings,
+            v=item_embeddings,
+            reg_term=self.reg_term,
+            expl=self.explainability_matrix[users, items],
+            expl_reg_term=self.expl_reg_term,
+        )
         loss.backward()
         self.optimizer.step()
         loss = loss.item()
