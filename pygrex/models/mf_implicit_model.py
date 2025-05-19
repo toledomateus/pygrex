@@ -1,8 +1,9 @@
 import numpy as np
 import scipy
+from pygrex.models.recommender_model import RecommenderModel
 
 
-class MFImplicitModel:
+class MFImplicitModel(RecommenderModel):
     def __init__(self, latent_dim, reg_term, learning_rate, epochs):
         self.latent_dim = latent_dim
         self.reg_term = reg_term
@@ -20,7 +21,19 @@ class MFImplicitModel:
         return True
 
     @staticmethod
-    def rearrange_dataset(ds, num_user, num_item):
+    def rearrange_dataset(ds, num_user: int, num_item: int) -> scipy.sparse.csr_matrix:
+        """
+        Converts the dataset into a sparse matrix format for the implicit model.
+
+        Args:
+            ds: Dataset containing userId and itemId columns
+            num_user : Number of users in the dataset
+            num_item : Number of items in the dataset
+
+        Returns:
+            ds_mtr: Sparse matrix representation of the dataset
+        """
+
         # Create sparse matrix directly from data
         data = np.ones(len(ds))  # Array of 1s for each interaction
         rows = ds["userId"].values  # User IDs as row indices
@@ -36,16 +49,11 @@ class MFImplicitModel:
         """
         Predict ratings for a user and one or more items.
 
-        Parameters:
-        -----------
-        user_id : int
-            User identifier
-        item_id : int or list
-            Item identifier or list of item identifiers
+        Args:
+            user_id : User identifier
+            item_id : Item identifier or list of item identifiers
 
         Returns:
-        --------
-        float or numpy.ndarray
             Predicted rating(s)
         """
         if not (0 <= user_id < self.model.user_factors.shape[0]):

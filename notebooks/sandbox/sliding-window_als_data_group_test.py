@@ -4,18 +4,18 @@
 import itertools  # noqa: I001
 import operator
 
+
 # Third-party library imports
 import numpy as np
 
 import pandas as pd
+from scipy import stats
 
 # Local application/library specific imports
 from pygrex.config import cfg
 from pygrex.data_reader import DataReader, GroupInteractionHandler
 from pygrex.models.als_model import ALS
-
-# Third-party library imports
-from scipy import stats
+from pygrex.recommender.group_recommender import GroupRecommender
 
 
 class SlidingWindow:
@@ -281,7 +281,7 @@ def generate_recommendation(model, user_id_str, movie_ids_to_pred, data):
     scaled_linear = scale_predictions(
         raw_predictions, ref_min=min_raw, ref_max=max_raw, method="linear"
     )
-
+    print("Scaled Linear1:", scaled_linear)
     # # Plot the distributions
     # plt.figure(figsize=(10, 6))
     # sns.kdeplot(scaled_linear, label='Scaled (Linear)', color='green', fill=True, alpha=0.5)
@@ -330,21 +330,30 @@ def generate_recommendation(model, user_id_str, movie_ids_to_pred, data):
 #               flag < 0, return the entire list
 #               flag > number of distinct movies in predictions, return the entire list
 def groupRecommendations(predictions, groupSize, flag):
-    # print the input
+    # scores = {}
+    # for user, pred in predictions.items():
+    #     for m in pred:
+    #         if m in scores:
+    #             scores[m] = scores[m] + pred[m]
+    #         else:
+    #             scores[m] = pred[m]
+    # # groupPred = {}
+    # for m in scores:
+    #     groupPred[m] = scores[m] / groupSize
 
     scores = {}
-    for user, pred in predictions.items():
-        for m in pred:
-            if m in scores:
-                scores[m] = scores[m] + pred[m]
+
+    for user, predictions in predictions.items():
+        for item_id, score in predictions.items():
+            if item_id in scores:
+                scores[item_id] += score
             else:
-                scores[m] = pred[m]
-    groupPred = {}
+                scores[item_id] = score
+
     for m in scores:
-        groupPred[m] = scores[m] / groupSize
-    sorted_pred = dict(
-        sorted(groupPred.items(), key=operator.itemgetter(1), reverse=True)
-    )
+        scores[m] /= groupSize
+
+    sorted_pred = dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
     # If flag = 0  return only the top 1
     # else return the top-k, where k = flag
     # Print the first 100 items in the sorted list
@@ -361,7 +370,6 @@ def groupRecommendations(predictions, groupSize, flag):
             if i == flag:
                 break
         res = listRec
-        # print('listRec: {}'.format(listRec))
     return res
 
 
@@ -596,7 +604,7 @@ algo.fit(data)
 
 # Read the file with the group ids
 
-group_handler = GroupInteractionHandler("../datasets/stratigis")
+group_handler = GroupInteractionHandler(**cfg.data.groups)
 
 all_groups = group_handler.read_groups("groupsWithHighRatings5.txt")
 
@@ -608,7 +616,6 @@ movie_ids = data.dataset["itemId"].unique()
 
 
 for group in all_groups:
-    group = group.strip("\n")
     members = group_handler.get_group_members(group)
     # members = getGroupMembers(group)
     print(members)
@@ -622,6 +629,15 @@ for group in all_groups:
     originalGroupRec = groupRecommendations(predictions, 5, 0)
     # print('originalGroupRec_top1: {}'.format(originalGroupRec))
 
+    group_recommender = GroupRecommender(data)
+    group_recommender.setup_recommendation(algo, members, movie_ids)
+    originalGroupRecNew = group_recommender.get_top_recommendation()
+
+    print(
+        "originalGroupRec: {} = originalGroupRecNew: {}??".format(
+            originalGroupRec, originalGroupRecNew
+        )
+    )
     found = 0
 
     # get all the items that at least one group member has interacted with
@@ -700,7 +716,6 @@ for group in all_groups:
             filepath_or_buffer=None,
             sep=None,
             names=None,
-            groups_filepath=None,
             skiprows=0,
             dataframe=changedData,
         )
