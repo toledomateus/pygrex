@@ -7,26 +7,26 @@ from pygrex.data_reader.data_reader import DataReader
 
 
 class GroupInteractionHandler:
-    def __init__(self, groups_filepath: Union[str, Path, List[Union[str, Path]]]):
+    def __init__(self, filepath_or_buffer: Union[str, Path, List[Union[str, Path]]]):
         """
         Initialize the GroupInteractionHandler.
 
         Args:
-            groups_filepath: Path to directory containing group files or list of file paths
+            filepath_or_buffer: Path to directory containing group files or list of file paths
         """
         # Convert to Path objects
-        if isinstance(groups_filepath, (str, Path)):
-            path = Path(groups_filepath)
+        if isinstance(filepath_or_buffer, (str, Path)):
+            path = Path(filepath_or_buffer)
             # If a single directory path is provided, get all files in it
             if path.is_dir():
-                self.groups_filepath = [
+                self.filepath_or_buffer = [
                     str(file) for file in path.iterdir() if file.is_file()
                 ]
             else:
-                self.groups_filepath = [str(path)]
+                self.filepath_or_buffer = [str(path)]
         else:
             # If a list of paths is provided, convert all to Path and then to strings
-            self.groups_filepath = [str(Path(p)) for p in groups_filepath]
+            self.filepath_or_buffer = [str(Path(p)) for p in filepath_or_buffer]
 
     def _get_group_filepath(self, filename: str) -> str:
         """
@@ -42,7 +42,7 @@ class GroupInteractionHandler:
             ValueError: Error: File does not exist
             ValueError: No file found containing '{filename}' in its name.
         """
-        for path_str in self.groups_filepath:
+        for path_str in self.filepath_or_buffer:
             if filename in path_str:  # Check if filename is part of the path
                 path = Path(path_str).resolve()
                 if path.exists():

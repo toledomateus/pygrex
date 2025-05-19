@@ -48,8 +48,8 @@ def test_environment():
 def test_init_with_directory(test_environment):
     """Test initialization with a directory path."""
     handler = GroupInteractionHandler(test_environment["test_dir"])
-    assert len(handler.groups_filepath) == 2
-    file_paths = set(handler.groups_filepath)
+    assert len(handler.filepath_or_buffer) == 2
+    file_paths = set(handler.filepath_or_buffer)
     assert str(test_environment["group1_file"]) in file_paths
     assert str(test_environment["group2_file"]) in file_paths
 
@@ -58,16 +58,16 @@ def test_init_with_file_list(test_environment):
     """Test initialization with a list of file paths."""
     file_list = [test_environment["group1_file"], test_environment["group2_file"]]
     handler = GroupInteractionHandler(file_list)
-    assert len(handler.groups_filepath) == 2
-    assert str(test_environment["group1_file"]) in handler.groups_filepath
-    assert str(test_environment["group2_file"]) in handler.groups_filepath
+    assert len(handler.filepath_or_buffer) == 2
+    assert str(test_environment["group1_file"]) in handler.filepath_or_buffer
+    assert str(test_environment["group2_file"]) in handler.filepath_or_buffer
 
 
 def test_init_with_single_file(test_environment):
     """Test initialization with a single file path."""
     handler = GroupInteractionHandler(test_environment["group1_file"])
-    assert len(handler.groups_filepath) == 1
-    assert handler.groups_filepath[0] == str(test_environment["group1_file"])
+    assert len(handler.filepath_or_buffer) == 1
+    assert handler.filepath_or_buffer[0] == str(test_environment["group1_file"])
 
 
 def test_get_group_filepath(test_environment):
