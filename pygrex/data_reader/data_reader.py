@@ -333,15 +333,17 @@ class DataReader:
         except KeyError as e:
             raise ValueError(f"Item ID(s) not found: {e}")
 
-    def get_new_user_id(self, u: Union[int, List[int]]) -> Union[int, List[int]]:
+    def get_new_user_id(
+        self, u: Union[Union[str, int], List[Union[str, int]]]
+    ) -> Union[int, List[int]]:
         """
         Get the new (consecutive) user ID(s) from the original ID(s).
 
         Args:
-            u (Union[int, List[int]]): Original user ID(s).
+            u: Original user ID(s).
 
         Returns:
-            Union[int, List[int]]: New user ID(s).
+            New user ID(s).
 
         Raises:
             ValueError: If ID mapping is not set or if any ID is not found.
@@ -351,21 +353,29 @@ class DataReader:
                 "ID mapping not set. Call make_consecutive_ids_in_dataset first"
             )
         try:
+            if isinstance(u, str):
+                u = int(u)
+                return int(self.new_user_id.loc[u, "new_userId"])
+            if isinstance(u, list) and all(isinstance(x, str) for x in u):
+                u = [int(x) for x in u]
+                return list(self.new_item_id.loc[u, "new_itemId"])
             if isinstance(u, (int, np.integer)):
                 return int(self.new_user_id.loc[u, "new_userId"])
             return list(self.new_user_id.loc[u, "new_userId"])
         except KeyError as e:
             raise ValueError(f"User ID(s) not found: {e}")
 
-    def get_new_item_id(self, i: Union[int, List[int]]) -> Union[int, List[int]]:
+    def get_new_item_id(
+        self, i: Union[Union[str, int], List[Union[str, int]]]
+    ) -> Union[int, List[int]]:
         """
         Get the new (consecutive) item ID(s) from the original ID(s).
 
         Args:
-            i (Union[int, List[int]]): Original item ID(s).
+            i: Original item ID(s).
 
         Returns:
-            Union[int, List[int]]: New item ID(s).
+            New item ID(s).
 
         Raises:
             ValueError: If ID mapping is not set or if any ID is not found.
@@ -375,8 +385,15 @@ class DataReader:
                 "ID mapping not set. Call make_consecutive_ids_in_dataset first"
             )
         try:
+            if isinstance(i, str):
+                i = int(i)
+                return int(self.new_item_id.loc[i, "new_itemId"])
+            if isinstance(i, list) and all(isinstance(x, str) for x in i):
+                i = [int(x) for x in i]
+                return list(self.new_item_id.loc[i, "new_itemId"])
             if isinstance(i, (int, np.integer)):
                 return int(self.new_item_id.loc[i, "new_itemId"])
+
             return list(self.new_item_id.loc[i, "new_itemId"])
         except KeyError as e:
             raise ValueError(f"Item ID(s) not found: {e}")
