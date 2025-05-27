@@ -40,12 +40,15 @@ class TestGroupRecommender:
         assert recommender._item_pool is None
         assert recommender._model is None
 
-    def test_setup_recommendation(self, group_recommender, mock_model):
+    def test_setup_recommendation(
+        self, group_recommender, mock_model, mock_data_reader
+    ):
         """Test setup_recommendation method."""
         # Arrange
         members = [1, 2, 3]
         item_ids = [101, 102, 103, 104, 105]
         mock_item_pool = np.array([101, 103, 105])
+        mock_data_reader.dataset.__getitem__().unique.return_value = item_ids
 
         # Mock methods
         group_recommender.get_non_interacted_items_for_recommendation = MagicMock(
@@ -56,7 +59,7 @@ class TestGroupRecommender:
         )
 
         # Act
-        group_recommender.setup_recommendation(mock_model, members, item_ids)
+        group_recommender.setup_recommendation(mock_model, members, mock_data_reader)
 
         # Assert
         assert group_recommender._members == members
