@@ -7,18 +7,20 @@ import operator
 
 # Third-party library imports
 import numpy as np
-
 import pandas as pd
 from scipy import stats
 
 # Local application/library specific imports
 from pygrex.config import cfg
 from pygrex.data_reader import DataReader, GroupInteractionHandler
+from pygrex.evaluator.sliding_window_evaluator import SlidingWindowEvaluator
+from pygrex.explain.sliding_window_explainer import SlidingWindowExplainer
 from pygrex.models.als_model import ALS
 from pygrex.recommender.group_recommender import GroupRecommender
+from pygrex.utils.sliding_window import SlidingWindow
 
 
-class SlidingWindow:
+class SlidingWindowOld:
     """Class for initiating and keeping track of the sliding window."""
 
     def __init__(self, arr, window_size):
@@ -281,7 +283,7 @@ def generate_recommendation(model, user_id_str, movie_ids_to_pred, data):
     scaled_linear = scale_predictions(
         raw_predictions, ref_min=min_raw, ref_max=max_raw, method="linear"
     )
-    print("Scaled Linear1:", scaled_linear)
+    # print("Scaled Linear1:", scaled_linear)
     # # Plot the distributions
     # plt.figure(figsize=(10, 6))
     # sns.kdeplot(scaled_linear, label='Scaled (Linear)', color='green', fill=True, alpha=0.5)
@@ -590,7 +592,7 @@ def makeChart(itemRatedByGroup, data, members, relMask, popMask):
 # Start of the experiments
 
 # Read the ratings file.
-data = DataReader(**cfg.data.test)
+data = DataReader(**cfg.data.ml1m)
 data.make_consecutive_ids_in_dataset()
 data.binarize(binary_threshold=1)
 
@@ -627,42 +629,62 @@ for group in all_groups:
         predictions[m] = user_pred
     # get the group recommendation. originalGroupRec: the target item -> item we want a counterfactual explanation for
     originalGroupRec = groupRecommendations(predictions, 5, 0)
-    # print('originalGroupRec_top1: {}'.format(originalGroupRec))
+    print("originalGroupRec_top1: {}".format(originalGroupRec))
 
     group_recommender = GroupRecommender(data)
-    group_recommender.setup_recommendation(algo, members, movie_ids)
-    originalGroupRecNew = group_recommender.get_top_recommendation()
-
-    print(
-        "originalGroupRec: {} = originalGroupRecNew: {}??".format(
-            originalGroupRec, originalGroupRecNew
-        )
-    )
-    found = 0
-
+    group_recommender.setup_recommendation(algo, members, data)
+    originalGroupRec_new = group_recommender.get_top_recommendation()
     # get all the items that at least one group member has interacted with
-    rawItemRatedByGroup = group_handler.get_rated_items_by_all_groupmembers(
+    items_rated_by_group = group_handler.get_rated_items_by_all_group_members(
         members, data
     )
     # rawitemRatedByGroup = getRatedItemsByAllGroupmembers(members, data)
-    itemRatedByGroup = rawItemRatedByGroup
+    itemRatedByGroup = items_rated_by_group
+    # compare originalGroupRec_new and originalGroupRec
+    print(
+        "originalGroupRec_new: {}, originalGroupRec {}".format(
+            originalGroupRec_new, originalGroupRec
+        )
+    )
 
     # check if the originalGroupRec is in the list of items that at least one group member has interacted with
     # if originalGroupRec in itemRatedByGroup:
     #     print("originalGroupRec is in itemRatedByGroup")
     # else:
     #     print("originalGroupRec is NOT in itemRatedByGroup")
-    s = len(itemRatedByGroup)
+    # s = len(itemRatedByGroup)
 
-    calls = 0
-
-    explanationsFound = {}
     # Create the popularity and Relevance Mask
     popMask = popularityMask(itemRatedByGroup, data)
     relMask = relevanceMask(originalGroupRec, predictions)
     # Create the aggregated list based on the aggregation of the four metrics
     chart = makeChart(itemRatedByGroup, data, members, relMask, popMask)
     print("------------------")
+    print("chart (first 15 items): {}".format(chart[:15]))
+    evaluator = SlidingWindowEvaluator(config={})
+    evaluator.set_group_recommender_values(
+        group_recommender._group_predictions, group_recommender._top_recommendation
+    )
+    # Generate ranked items
+    ranked_items = evaluator.generate_ranked_items(items_rated_by_group, data, members)
+    print("ranked_items (first 15 items): {}".format(ranked_items[:15]))
+
+    # Create the explainer
+    explainer = SlidingWindowExplainer(
+        data=data,
+        group_handler=group_handler,
+        members=members,
+        target_item=originalGroupRec,
+        candidate_items=ranked_items,
+        cfg=cfg,
+        model=algo,
+    )
+
+    sw1 = SlidingWindow(ranked_items, window_size=3)
+    explainer.set_sliding_window(sw1)
+
+    # Find explanations
+    explanations = explainer.find_explanation()
 
     # NOTE: change the following between static size window and percentage window
     # window_size = math.floor(len(chart) * 0.1)
@@ -670,20 +692,22 @@ for group in all_groups:
 
     print("window size: {}\tchart size: {}".format(window_size, len(chart)))
     # Create the window
-    sw = SlidingWindow(chart, window_size)
+    sw = SlidingWindowOld(chart, window_size)
 
     checked = []
-    s = len(chart)
+    # s = len(chart)
     if not chart:
         print("Could not find any items")
         continue
     l = 1  # noqa: E741
     exp = []
+    explanationsFound = {}
     wind_count = 0
+    found = 0
+    calls = 0
     while True:
         # Get the sliding window
         big_window = sw.get_next_window()
-        # print('big_window: {}'.format(big_window))
         # If the window has passed through all list exit with message: Could not find Explanation
         # If the explanation is found exit
         # If the group recommended system has been called more than 1000 times stop
@@ -735,9 +759,6 @@ for group in all_groups:
             )
             predictions_retrained[m] = user_pred
         groupRec = groupRecommendations(predictions_retrained, 5, 10)
-        print("groupRec_retrained_seg (1st rec): {}".format(groupRec[0]))
-
-        # print('groupRec_retrained: {}'.format(groupRec))
 
         # if the target item is still in the group recommendation list continue
         if originalGroupRec in groupRec:
@@ -755,8 +776,6 @@ for group in all_groups:
                 if found_subset > 0:
                     break
                 combinations = itertools.combinations(big_window, length)
-                # print('combinations: {}'.format(combinations))
-                # print('length: {}'.format(length))
                 for it in combinations:
                     # if a counterfactual explanation is found stop
                     # if the group recommender system has been called more than 1000 stop
@@ -766,17 +785,9 @@ for group in all_groups:
                         if calls > 1000:
                             break
                     exp = []
-                    # print('it: {}'.format(it))
                     for itm in range(length):
                         exp.append(it[itm])
-                    # print('exp: {}'.format(exp))
                     calls = calls + 1
-                    # print('{} of {} at combination length {}'.format(l,cs,length))
-
-                    # print(calls)
-                    # print('checking set: {}'.format(exp))
-
-                    # print('a explicacao é {} e o primeiro item da BW é {}'.format(exp,big_window[0]))
 
                     # Change the data and call on the group recommender system
                     changedData = group_handler.create_modified_dataset(
@@ -786,16 +797,11 @@ for group in all_groups:
                         data=data,
                     )
 
-                    # changedData = changeData(data.dataset, members, exp, data)
-                    # print("O primeiro item da BW está no changedData (ultimo)?{}".format(changedData.itemId.isin(exp) & changedData.userId.isin(members)))
-                    # print("O primeiro item da BW está no changedData1?{}".format(changedData1.itemId.isin(exp) & changedData1.userId.isin(members)))
-
                     # Retrain the recommendation model
                     data_retrained = DataReader(
                         filepath_or_buffer=None,
                         sep=None,
                         names=None,
-                        groups_filepath=None,
                         skiprows=0,
                         dataframe=changedData,
                     )
@@ -815,10 +821,8 @@ for group in all_groups:
                         )
                         predictions_retrained[m] = user_pred
                     groupRec_last = groupRecommendations(predictions_retrained, 5, 10)
-                    print("groupRec_retrained_ultimo (1st rec): {}".format(groupRec[0]))
-                    # print('groupRec_retrained_again: {}'.format(groupRec))
+
                     if originalGroupRec in groupRec_last:
-                        # print("originalGroupRec still in groupRec")
                         l = l + 1  # noqa: E741
                         continue
 

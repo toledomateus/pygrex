@@ -96,14 +96,6 @@ def calculate_user_trending_score(
         if len(original_ratings) > 0:  # All ratings are same, or only one rating
             normalized_ratings = np.zeros_like(original_ratings, dtype=float)
 
-        # --- Peak Detection on Normalized Data ---
-        # Ensure there are enough data points for peak finding with distance
-        # if (
-        #     len(normalized_ratings) < peak_min_distance * 2
-        #     and len(normalized_ratings) > 0
-        # ):
-        #     pass  # Let find_peaks handle it; it might find 0 peaks.
-
         # Parameters peak_norm_min_height and peak_norm_min_prominence apply to normalized_ratings
         peaks_indices, properties = find_peaks(
             normalized_ratings,
@@ -196,7 +188,7 @@ def calculate_user_trending_score(
 
 
 if __name__ == "__main__":
-    csv_file_path = "ratings.csv"
+    csv_file_path = "datasets/ml-32m/ratings.csv"
     num_random_users_to_test = 2
 
     # Parameters for local peak detection (APPLY TO NORMALIZED DATA [0,1])

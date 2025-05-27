@@ -253,7 +253,7 @@ def scale_predictions(
 def generate_recommendation(model, user_id_str, movie_ids_to_pred, data):
     # Convert user_id to integer and get the new user ID
     user_id = int(user_id_str)
-    new_user_id = data.get_new_user_id(user_id)
+    new_user_id = data.get_new_user_id(user_id_str)
     raw_predictions = []
     # Check if the model has item_factors and if the number of items matches the dataset
     for movie_id in movie_ids_to_pred:
@@ -595,7 +595,7 @@ algo.fit(data)
 
 
 # Read the file with the group ids
-all_groups = readGroups("../datasets/ml-100k/groupsWithHighRatings5.txt")
+all_groups = readGroups("../datasets/stratigis/groupsWithHighRatings5.txt")
 movie_ids = data.dataset["itemId"].unique()
 # print("number of movies: {}".format(len(movie_ids)))
 # print("number of users: {}".format(len(data.dataset["userId"].unique())))
@@ -682,7 +682,6 @@ for group in all_groups:
             filepath_or_buffer=None,
             sep=None,
             names=None,
-            groups_filepath=None,
             skiprows=0,
             dataframe=changedData,
         )
@@ -751,27 +750,25 @@ for group in all_groups:
                     # print("O primeiro item da BW está no changedData1?{}".format(changedData1.itemId.isin(exp) & changedData1.userId.isin(members)))
 
                     # Retrain the recommendation model
-                    data_retrained = DataReader(
+                    data_retrained1 = DataReader(
                         filepath_or_buffer=None,
                         sep=None,
                         names=None,
-                        groups_filepath=None,
                         skiprows=0,
                         dataframe=changedData,
                     )
-                    data_retrained.make_consecutive_ids_in_dataset()
-                    data_retrained.dataset = data_retrained.dataset.iloc[
-                        1:
-                    ].reset_index(drop=True)
+
+                    data_retrained1.make_consecutive_ids_in_dataset()
+                    data_retrained1.binarize(binary_threshold=1)
 
                     # Retrain the recommendation model
-                    algo_retrained = ALS(**cfg.model.als)
-                    algo_retrained.fit(data_retrained)
+                    algo_retrained1 = ALS(**cfg.model.als)
+                    algo_retrained1.fit(data_retrained)
 
                     predictions_retrained = {}
                     for m in members:
                         user_pred = generate_recommendation(
-                            algo_retrained, m, candidateMovies, data_retrained
+                            algo_retrained1, m, candidateMovies, data_retrained1
                         )
                         predictions_retrained[m] = user_pred
                     groupRec_last = groupRecommendations(predictions_retrained, 5, 10)

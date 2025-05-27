@@ -376,7 +376,7 @@ def calculate_user_trending_score(
 
 
 if __name__ == "__main__":
-    csv_file_path = "ratings.csv"
+    csv_file_path = "datasets/ml-32m/ratings.csv"
     num_random_users_to_test = 2
 
     # Parameters for local peak detection (APPLY TO NORMALIZED DATA [0,1])
