@@ -175,7 +175,7 @@ def test_create_modified_dataset(mock_data_reader, test_environment):
 
 
 @patch("pygrex.data_reader.DataReader", spec=DataReader)
-def test_get_rated_items_by_all_groupmembers(mock_data_reader, test_environment):
+def test_get_rated_items_by_all_group_members(mock_data_reader, test_environment):
     """Test getting items rated by any group member."""
     mock_reader = mock_data_reader()
     mock_reader.dataset = test_environment["test_data"].copy()
@@ -184,7 +184,7 @@ def test_get_rated_items_by_all_groupmembers(mock_data_reader, test_environment)
 
     handler = test_environment["handler"]
     group = [1, 2, 3]
-    rated_items = handler.get_rated_items_by_all_groupmembers(group, mock_reader)
+    rated_items = handler.get_rated_items_by_all_group_members(group, mock_reader)
     expected_items = np.array([101, 102, 103, 104])
     np.testing.assert_array_equal(np.sort(rated_items), np.sort(expected_items))
 

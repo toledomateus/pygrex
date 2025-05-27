@@ -172,7 +172,7 @@ class GroupInteractionHandler:
 
         return dataset[mask]
 
-    def get_rated_items_by_all_groupmembers(
+    def get_rated_items_by_all_group_members(
         self, group: List[Union[int, str]], original_data: DataReader
     ) -> np.ndarray:
         """
