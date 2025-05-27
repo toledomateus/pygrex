@@ -24,23 +24,27 @@ class GroupRecommender:
         self._members = None
         self._item_pool = None
         self._model = None
+        self._top_recommendation = None
 
     def setup_recommendation(
         self,
         model: RecommenderModel,
         members: List[Union[str, int]],
-        item_ids: List[Union[str, int]],
+        data: DataReader,
     ) -> None:
         """
         Setup the group recommendation by specifying members, candidate items, and the model.
 
         Args:
-            members: List of user IDs representing the group members
-            item_ids: List of all available item IDs to consider
             model: The recommendation model to use
+            members: List of user IDs representing the group members
+            data: DataReader object containing the dataset
         """
         self._members = members
         self._model = model
+
+        # get all item IDs from the dataset
+        item_ids = data.dataset["itemId"].unique()
 
         # Get items that no group member has interacted with
         self._item_pool = self.get_non_interacted_items_for_recommendation(
@@ -148,7 +152,6 @@ class GroupRecommender:
             target_min=1,
             target_max=5,
         )
-        print("Scaled Linear:", scaled_linear)
         # Convert the scaled predictions into a dictionary with item IDs as keys
         predictions = {
             item: scaled_pred for item, scaled_pred in zip(item_pool, scaled_linear)
@@ -216,7 +219,9 @@ class GroupRecommender:
         Returns:
             The item ID with the highest average score across all group members.
         """
-        return self.get_group_recommendations(top_k=1)
+        if self._top_recommendation is None:
+            self._top_recommendation = self.get_group_recommendations(top_k=1)
+        return self._top_recommendation
 
     def get_recommendation_scores(self) -> Dict[int, float]:
         """
