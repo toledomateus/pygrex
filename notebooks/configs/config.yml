@@ -1,13 +1,19 @@
 base:
   data:
+    groups:
+      filepath_or_buffer:
+          - 'datasets/stratigis/groupsWithHighRatings5.txt'
+          - 'datasets/stratigis/groupsWithModerateRatings5untested.txt'
+    testdata:
+      filepath_or_buffer: 'datasets/fake_data.csv'
+      sep: '\t'
+      skiprows: 1
+      names: [ 'userId', 'itemId', 'rating', 'timestamp']
     test:
-      filepath_or_buffer: 'ratings.csv'
+      filepath_or_buffer: 'datasets/stratigis/ratings.csv'
       sep: ','
       skiprows: 1
       names: [ 'userId', 'itemId', 'rating', 'timestamp']
-      groups_filepath:
-          - 'datasets/ml-100k/groupsWithHighRatings5.txt'
-          - 'datasets/ml-100k/groupsWithModerateRatings5untested.txt'
     ml100k:
         filepath_or_buffer: 'datasets/ml-100k/u.data'
         sep: '\t'

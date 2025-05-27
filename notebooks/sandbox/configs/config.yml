@@ -2,10 +2,10 @@ base:
   data:
     groups:
       filepath_or_buffer:
-          - 'datasets/stratigis/groupsWithHighRatings5.txt'
-          - 'datasets/stratigis/groupsWithModerateRatings5untested.txt'
+          - '../datasets/stratigis/groupsWithHighRatings5.txt'
+          - '../datasets/stratigis/groupsWithModerateRatings5untested.txt'
     test:
-      filepath_or_buffer: 'datasets/stratigis/ratings.csv'
+      filepath_or_buffer: '../datasets/stratigis/ratings.csv'
       sep: ','
       skiprows: 1
       names: [ 'userId', 'itemId', 'rating', 'timestamp']
