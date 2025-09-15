@@ -1,0 +1,184 @@
+[522, 385, 234, 452, 594]
+------------------
+If the group had not interacted with these items [480],
+the item of interest 919 would not have appeared on the recommendation list;
+instead, 8 would have been recommended.
+
+Explanation: [480] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[522, 385, 234, 246, 428]
+------------------
+If the group had not interacted with these items [260],
+the item of interest 216 would not have appeared on the recommendation list;
+instead, 35 would have been recommended.
+
+Explanation: [260] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[452, 246, 220, 586, 82]
+------------------
+If the group had not interacted with these items [2571],
+the item of interest 157 would not have appeared on the recommendation list;
+instead, 65 would have been recommended.
+
+Explanation: [2571] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[452, 246, 220, 586, 198]
+------------------
+If the group had not interacted with these items [2571],
+the item of interest 362 would not have appeared on the recommendation list;
+instead, 88 would have been recommended.
+
+Explanation: [2571] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[452, 246, 220, 586, 50]
+------------------
+If the group had not interacted with these items [2571],
+the item of interest 349 would not have appeared on the recommendation list;
+instead, 88 would have been recommended.
+
+Explanation: [2571] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[220, 586, 73, 263, 372]
+------------------
+If the group had not interacted with these items [318],
+the item of interest 349 would not have appeared on the recommendation list;
+instead, 65 would have been recommended.
+
+Explanation: [318] : found at call: 2
+1	2	[0.8]	[1.0, 1.0, 0.0, 1.0, 1.0]
+
+
+
+[220, 586, 73, 263, 365]
+------------------
+If the group had not interacted with these items [318],
+the item of interest 349 would not have appeared on the recommendation list;
+instead, 172 would have been recommended.
+
+Explanation: [318] : found at call: 2
+1	2	[0.8]	[1.0, 1.0, 0.0, 1.0, 1.0]
+
+
+
+[220, 586, 73, 263, 6]
+------------------
+If the group had not interacted with these items [318],
+the item of interest 349 would not have appeared on the recommendation list;
+instead, 19 would have been recommended.
+
+Explanation: [318] : found at call: 2
+1	2	[0.8]	[1.0, 1.0, 0.0, 1.0, 1.0]
+
+
+
+[73, 263, 563, 119, 66]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 50 would not have appeared on the recommendation list;
+instead, 233 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[0.8]	[0.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[73, 263, 563, 4, 312]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 235 would not have appeared on the recommendation list;
+instead, 428 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[0.6]	[0.0, 1.0, 1.0, 0.0, 1.0]
+
+
+
+[73, 263, 563, 4, 354]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 235 would not have appeared on the recommendation list;
+instead, 529 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[0.6]	[0.0, 1.0, 1.0, 0.0, 1.0]
+
+
+
+[14, 156, 45, 580, 560]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 235 would not have appeared on the recommendation list;
+instead, 313 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[14, 156, 45, 560, 318]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 235 would not have appeared on the recommendation list;
+instead, 222 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[14, 156, 45, 560, 606]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 235 would not have appeared on the recommendation list;
+instead, 222 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[14, 156, 45, 89, 28]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 441 would not have appeared on the recommendation list;
+instead, 40 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[14, 156, 517, 462, 448]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 6 would not have appeared on the recommendation list;
+instead, 18 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
+
+
+
+[14, 156, 517, 89, 28]
+------------------
+If the group had not interacted with these items [356],
+the item of interest 441 would not have appeared on the recommendation list;
+instead, 40 would have been recommended.
+
+Explanation: [356] : found at call: 2
+1	2	[1.0]	[1.0, 1.0, 1.0, 1.0, 1.0]
