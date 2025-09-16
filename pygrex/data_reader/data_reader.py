@@ -1,8 +1,7 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 import numpy as np
 import pandas as pd
 import warnings
-import os
 
 
 class DataReader:
@@ -63,8 +62,10 @@ class DataReader:
         elif filepath_or_buffer and sep and names:
             # Eagerly load data if file parameters are provided
             try:
+                assert self.filepath_or_buffer is not None
+
                 loaded_df = pd.read_csv(
-                    filepath_or_buffer=self.filepath_or_buffer,  # type: ignore
+                    filepath_or_buffer=self.filepath_or_buffer,
                     sep=self.sep,
                     names=self.names,
                     skiprows=self.skiprows,
@@ -197,19 +198,23 @@ class DataReader:
         sorted_unique_items = sorted(dataset["itemId"].unique())
 
         # Create user ID mapping from the sorted list
-        user_id_mapping = pd.DataFrame({
-            "userId": sorted_unique_users,
-            "new_userId": range(len(sorted_unique_users))
-        })
+        user_id_mapping = pd.DataFrame(
+            {
+                "userId": sorted_unique_users,
+                "new_userId": range(len(sorted_unique_users)),
+            }
+        )
         dataset["userId"] = dataset["userId"].map(
             user_id_mapping.set_index("userId")["new_userId"]
         )
 
         # Create item ID mapping from the sorted list
-        item_id_mapping = pd.DataFrame({
-            "itemId": sorted_unique_items,
-            "new_itemId": range(len(sorted_unique_items))
-        })
+        item_id_mapping = pd.DataFrame(
+            {
+                "itemId": sorted_unique_items,
+                "new_itemId": range(len(sorted_unique_items)),
+            }
+        )
         dataset["itemId"] = dataset["itemId"].map(
             item_id_mapping.set_index("itemId")["new_itemId"]
         )
@@ -219,7 +224,7 @@ class DataReader:
         self.original_item_id = item_id_mapping.set_index("new_itemId")
         self.new_user_id = user_id_mapping.set_index("userId")
         self.new_item_id = item_id_mapping.set_index("itemId")
-        
+
         # Update the internal dataset
         dataset["userId"] = dataset["userId"].astype(int)
         dataset["itemId"] = dataset["itemId"].astype(int)
@@ -308,7 +313,8 @@ class DataReader:
         try:
             if isinstance(u, (int, np.integer)):
                 return int(self.original_user_id.loc[u, "userId"])  # type: ignore
-            return list(self.original_user_id.loc[u, "userId"])
+            series = cast(pd.Series, self.original_user_id.loc[u, "userId"])
+            return series.tolist()
         except KeyError as e:
             raise ValueError(f"User ID(s) not found: {e}")
 
@@ -332,7 +338,9 @@ class DataReader:
         try:
             if isinstance(i, (int, np.integer)):
                 return int(self.original_item_id.loc[i, "itemId"])  # type: ignore
-            return list(self.original_item_id.loc[i, "itemId"])
+
+            series = cast(pd.Series, self.original_item_id.loc[i, "itemId"])
+            return series.tolist()
         except KeyError as e:
             raise ValueError(f"Item ID(s) not found: {e}")
 
@@ -361,10 +369,12 @@ class DataReader:
                 return int(self.new_user_id.loc[u, "new_userId"])  # type: ignore
             if isinstance(u, list) and all(isinstance(x, str) for x in u):
                 u = [int(x) for x in u]
-                return list(self.new_item_id.loc[u, "new_itemId"])  # type: ignore
+                series = cast(pd.Series, self.new_user_id.loc[u, "new_userId"])
+                return series.tolist()
             if isinstance(u, (int, np.integer)):
                 return int(self.new_user_id.loc[u, "new_userId"])  # type: ignore
-            return list(self.new_user_id.loc[u, "new_userId"])
+            series = cast(pd.Series, self.new_user_id.loc[u, "new_userId"])
+            return series.tolist()
         except KeyError as e:
             raise ValueError(f"User ID(s) not found: {e}")
 
@@ -393,10 +403,11 @@ class DataReader:
                 return int(self.new_item_id.loc[i, "new_itemId"])  # type: ignore
             if isinstance(i, list) and all(isinstance(x, str) for x in i):
                 i = [int(x) for x in i]
-                return list(self.new_item_id.loc[i, "new_itemId"])  # type: ignore
+                series = cast(pd.Series, self.new_item_id.loc[i, "new_itemId"])
+                return series.tolist()
             if isinstance(i, (int, np.integer)):
                 return int(self.new_item_id.loc[i, "new_itemId"])  # type: ignore
-
-            return list(self.new_item_id.loc[i, "new_itemId"])
+            series = cast(pd.Series, self.new_item_id.loc[i, "new_itemId"])
+            return series.tolist()
         except KeyError as e:
             raise ValueError(f"Item ID(s) not found: {e}")

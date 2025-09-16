@@ -5,27 +5,19 @@ from io import StringIO
 import streamlit as st
 import pandas as pd
 import numpy as np
-import networkx as nx
 from collections import Counter
 from typing import Dict, Iterable, Optional, Set, Union
 from contextlib import redirect_stdout, redirect_stderr
-import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 # Library Imports
 from pygrex.config import cfg
-
-from pygrex.utils import AssociationRules, SlidingWindow
-from pygrex.evaluator.sliding_window_evaluator import SlidingWindowEvaluator
-from pygrex.evaluator.evaluation_utils import calculate_gild_for_explanations
-
+from pygrex.evaluator import ExplanationEvaluator
 from pygrex.explain import (
     LORE4GroupsExplainer,
     SlidingWindowExplainer,
     RuleBasedGroupRecExplainer,
 )
-
 
 # Required to load the config for the explainer
 
@@ -56,22 +48,7 @@ recommended_items = st.session_state.recommended_items
 group_members = group_recommender.get_group_members()
 aggregation_strategy = group_recommender.get_aggregation_strategy()
 
-
 #  Caching for Expensive Functions
-
-
-@st.cache_data
-def compute_association_rules(min_support, min_confidence, rating_threshold):
-    """
-    Creates the AssociationRules object and computes the rules inside the cached function.
-    """
-    rules_miner = AssociationRules(
-        data=data_reader,
-        min_support=min_support,
-        min_confidence=min_confidence,
-        rating_threshold=rating_threshold,
-    )
-    return rules_miner.compute()
 
 
 @st.cache_data
@@ -91,6 +68,7 @@ def load_cached_data_rules(min_support, min_confidence, rating_threshold):
         filepath = os.path.join(cached_rules_dir, filename + ext)
         if os.path.exists(filepath):
             try:
+                data = None
                 if ext in [".pkl", ".pickle"]:
                     with open(filepath, "rb") as f:
                         data = pickle.load(f)
@@ -538,49 +516,28 @@ if chosen_explainer == explainer_options[0]:
                     )
                 )
 
-                # 2. Instantiate the evaluator and set the required values from the recommender
-                evaluator = SlidingWindowEvaluator(
-                    config={}
-                )  # Cfg isn't used in methods
-                evaluator.set_group_recommender_values(
-                    group_recommender.get_individual_predictions(),
-                    group_recommender.get_top_recommendation(),
-                )
-
-                # 3. Generate the ranked list of items to test for removal
-                ranked_items_for_removal, item_metrics = (
-                    evaluator.generate_ranked_items(
-                        all_rated_items=items_rated_by_group,
-                        data=data_reader,
-                        group_members=group_members,
-                        component_weights=weights,
-                    )
-                )
-
-                # 4. Instantiate SlidingWindow and the Explainer
-                sliding_window = SlidingWindow(
-                    sequence=ranked_items_for_removal, window_size=window_size
-                )
                 explainer = SlidingWindowExplainer(
                     cfg=None,
                     data=data_reader,
                     group_handler=group_handler,
                     members=group_members,
                     target_item=target_item,
-                    candidate_items=recommended_items,
                     aggregation_strategy=aggregation_strategy,
-                    sliding_window=sliding_window,
                     model=model,
+                    window_size=window_size,
                 )
-
-                explainer.set_item_metrics(item_metrics)
 
                 # 5. Find explanations and capture the results
                 stdout_buffer = StringIO()
                 stderr_buffer = StringIO()
                 # Use context managers to redirect both streams to our text buffers
                 with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-                    explanations = explainer.find_explanation()
+                    explanations = explainer.find_explanation(
+                        items_rated_by_group=items_rated_by_group,
+                        group_predictions=group_recommender.get_individual_predictions(),
+                        top_recommendation=group_recommender.get_top_recommendation(),
+                        ranking_weights=weights,
+                    )
 
                 st.session_state.sw_explanations = explanations
 
@@ -686,13 +643,15 @@ elif chosen_explainer == explainer_options[1]:
     expected_filename = f"rules_sup{min_support:.2f}_conf{min_confidence:.1f}_rating{rating_threshold:.0f}"
 
     if st.button("Generate Rule-Based Explanation", key="rb_button"):
+        cached_rules = None
         with st.spinner("Loading cached association rules and finding explanations..."):
             try:
                 # Try to load cached rules first
                 cached_data_rules = load_cached_data_rules(
                     min_support, min_confidence, rating_threshold
                 )
-                cached_rules = cached_data_rules["rules"]
+                if cached_data_rules:
+                    cached_rules = cached_data_rules.get("rules")
 
                 if cached_rules is None:
                     st.error(
@@ -724,9 +683,12 @@ elif chosen_explainer == explainer_options[1]:
                 advanced_fidelity_score = explainer.compute_group_fidelity_advanced()
                 explanation_details = explainer.get_explanation_details()
 
-                st.session_state.expgrs_fidelity = fidelity_score
-                st.session_state.expgrs_advanced_fidelity = advanced_fidelity_score
-                st.session_state.expgrs_details = explanation_details
+                explanation_results = {
+                    "fidelity": fidelity_score,
+                    "advanced_fidelity": advanced_fidelity_score,
+                    "details": explanation_details,
+                }
+                st.session_state.expgrs_results = explanation_results
 
                 st.success(
                     "✅ Rule-based explanations generated successfully using cached rules!"
@@ -736,12 +698,12 @@ elif chosen_explainer == explainer_options[1]:
                 st.error(f"An error occurred while processing cached rules: {e}")
 
         #  Display Rule-Based Results
-        if "expgrs_fidelity" in st.session_state:
+        if "expgrs_results" in st.session_state:
             st.markdown("")
             st.header("Explanation Results")
-            explanation_details_for_gild = st.session_state.get("expgrs_details", {})
-            gild_score = calculate_gild_for_explanations(
-                explanation_details_for_gild, "EXPGRS"
+            evaluator = ExplanationEvaluator()
+            metrics = evaluator.evaluate(
+                st.session_state.expgrs_results, explainer_type="EXPGRS"
             )
 
             #  Display Metrics
@@ -749,19 +711,19 @@ elif chosen_explainer == explainer_options[1]:
             with col1:
                 st.metric(
                     "Explanation Fidelity",
-                    f"{st.session_state.expgrs_fidelity:.2%}",
+                    f"{metrics['fidelity']:.2%}",
                     help="The percentage of recommended items that could be explained by at least one rule satisfying the minimum member threshold.",
                 )
             with col2:
                 st.metric(
                     "Advanced Explanation Fidelity",
-                    f"{st.session_state.expgrs_advanced_fidelity:.2%}",
+                    f"{st.session_state.expgrs_results['advanced_fidelity']:.2%}",
                     help="A stricter fidelity where every group member must have seen at least one item from the rule's antecedent.",
                 )
             with col3:
                 st.metric(
                     "Explanation Diversity (GILD)",
-                    f"{gild_score:.4f}",
+                    f"{metrics['gild']:.4f}",
                     help="Gaussian Intra-List Diversity. Measures how varied the explanation   are. Higher is better.",
                 )
 
@@ -786,42 +748,49 @@ elif chosen_explainer == explainer_options[1]:
                         with st.container(border=True):
                             st.subheader(f"Item {item_id} was recommended because...")
 
-                            # Use the new helper function to get a summary
-                            summary_df = summarize_explanation_rules(
-                                rules_list, cached_rules
-                            )
-                            if not summary_df.empty:
-                                summary_df["because_they_interacted_with"] = summary_df[
-                                    "because_they_interacted_with"
-                                ].apply(lambda fs: sorted(list(fs)))
+                            # Ensure cached_rules is a DataFrame before passing
+                            if isinstance(cached_rules, pd.DataFrame):
+                                summary_df = summarize_explanation_rules(
+                                    rules_list, cached_rules
+                                )
+                                if not summary_df.empty:
+                                    summary_df["because_they_interacted_with"] = (
+                                        summary_df[
+                                            "because_they_interacted_with"
+                                        ].apply(lambda fs: sorted(list(fs)))
+                                    )
 
-                                # Display the clean summary table
-                                st.dataframe(
-                                    summary_df,
-                                    use_container_width=True,
-                                    hide_index=True,
-                                    column_config={
-                                        "because_they_interacted_with": st.column_config.ListColumn(
-                                            "Interaction Pattern (Antecedent)",
-                                            help="The set of items the group previously interacted with.",
-                                        ),
-                                        "num_rules": st.column_config.NumberColumn(
-                                            "Pattern Frequency",
-                                            help="How many rules were based on this specific pattern.",
-                                        ),
-                                        "avg_confidence": st.column_config.ProgressColumn(
-                                            "Avg. Confidence",
-                                            help="The average confidence that this pattern leads to the recommendation.",
-                                            format="%.2f",
-                                            min_value=0,
-                                            max_value=1,
-                                        ),
-                                        "avg_lift": st.column_config.NumberColumn(
-                                            "Avg. Lift",
-                                            help="How much more likely this pattern is than random chance. (Lift > 1 is good).",
-                                            format="%.2f",
-                                        ),
-                                    },
+                                    # Display the clean summary table
+                                    st.dataframe(
+                                        summary_df,
+                                        use_container_width=True,
+                                        hide_index=True,
+                                        column_config={
+                                            "because_they_interacted_with": st.column_config.ListColumn(
+                                                "Interaction Pattern (Antecedent)",
+                                                help="The set of items the group previously interacted with.",
+                                            ),
+                                            "num_rules": st.column_config.NumberColumn(
+                                                "Pattern Frequency",
+                                                help="How many rules were based on this specific pattern.",
+                                            ),
+                                            "avg_confidence": st.column_config.ProgressColumn(
+                                                "Avg. Confidence",
+                                                help="The average confidence that this pattern leads to the recommendation.",
+                                                format="%.2f",
+                                                min_value=0,
+                                                max_value=1,
+                                            ),
+                                            "avg_lift": st.column_config.NumberColumn(
+                                                "Avg. Lift",
+                                                help="How much more likely this pattern is than random chance. (Lift > 1 is good).",
+                                                format="%.2f",
+                                            ),
+                                        },
+                                    )
+                            else:
+                                st.warning(
+                                    "Cached rules are not available as a DataFrame, so explanation summary cannot be displayed."
                                 )
 
 #  Content for "Local Model-Agnostic (LORE4GroupRS)"
@@ -833,9 +802,6 @@ elif chosen_explainer == explainer_options[2]:
         # Import required modules
 
         with st.spinner("🔍 Diagnosing data alignment and creating item profiles..."):
-            # Progress tracking
-            status_text = st.empty()
-
             # Step 1: Diagnose ID mismatch
             tags_df = pd.read_csv(cfg.data.tags.tags_file)
 
@@ -849,7 +815,7 @@ elif chosen_explainer == explainer_options[2]:
                     original_id = data_reader.get_original_item_id(consecutive_id)
                     consecutive_to_original[consecutive_id] = original_id
                     original_to_consecutive[original_id] = consecutive_id
-                except:
+                except (ValueError, KeyError):
                     continue
 
             # Step 3: Filter and process tags
@@ -1101,7 +1067,7 @@ elif chosen_explainer == explainer_options[2]:
         edges = []
         positions = {}
 
-        def add_node(node_id, depth=0, pos_x=0):
+        def add_node(node_id, depth=0, pos_x=0.0):
             """Recursively add nodes and calculate positions"""
 
             num_samples = tree.n_node_samples[node_id]
@@ -1223,10 +1189,10 @@ elif chosen_explainer == explainer_options[2]:
             plot_bgcolor="white",  # TODO: ADAPT TO DARK MODE
         )
 
-        st.plotly_chart(fig, use_container_width=True, key=f"decision_tree_{item_id}")
+        st.plotly_chart(fig, width="strech", key=f"decision_tree_{item_id}")
 
     def evaluate_rule_for_item(
-        rule: str, item_profiles: dict, item_id: str, movie_genres: set = None
+        rule: str, item_profiles: Dict, item_id: str, movie_genres: Optional[set] = None
     ) -> bool:
         """
         Evaluate if a rule condition is satisfied for a specific item.
@@ -1261,8 +1227,6 @@ elif chosen_explainer == explainer_options[2]:
         if threshold_match:
             feature, operator, threshold_str = threshold_match.groups()
             feature = feature.strip()
-            threshold = float(threshold_str)
-
             # Check if item has this feature (assuming binary features for now)
             has_feature = feature in item_features
 
@@ -1327,7 +1291,7 @@ elif chosen_explainer == explainer_options[2]:
             )
 
             for i, rule in enumerate(factual_rules):
-                formatted_rule = format_rule_with_context(rule, movie_genres)
+                formatted_rule = format_rule_with_context(rule, movie_genres or set())
 
                 # Evaluate the rule for the specific item
                 rule_satisfied = evaluate_rule_for_item(
@@ -1403,7 +1367,9 @@ elif chosen_explainer == explainer_options[2]:
                     conditions = []
 
                     for rule in scenario:
-                        formatted_rule = format_rule_with_context(rule, movie_genres)
+                        formatted_rule = format_rule_with_context(
+                            rule, movie_genres or set()
+                        )
                         conditions.append(formatted_rule["readable"].lower())
 
                     scenario_text += " **AND** ".join(conditions)
@@ -1476,7 +1442,7 @@ elif chosen_explainer == explainer_options[2]:
         },
     }
 
-    def format_rule_with_context(rule: str, movie_genres: set = None) -> dict:
+    def format_rule_with_context(rule: str, movie_genres: Optional[set] = None) -> dict:
         """
         Enhanced rule formatting that considers movie genres using a more structured
         and scalable approach.
@@ -1575,6 +1541,8 @@ elif chosen_explainer == explainer_options[2]:
 
     def get_genre_counterfactual_insight(scenario_rules, movie_genres):
         """Generate genre-based insights for counterfactual scenarios"""
+        if not movie_genres:
+            return None
 
         genre_insights = {
             "action": "More action-oriented content might be preferred.",
@@ -1675,6 +1643,8 @@ elif chosen_explainer == explainer_options[2]:
 
     def get_member_genre_preference(member_scenarios, movie_genres):
         """Get genre preference insight for individual member"""
+        if not movie_genres:
+            return None
 
         # Look at what this member would prefer instead
         rejected_features = []
@@ -1697,20 +1667,21 @@ elif chosen_explainer == explainer_options[2]:
             return
 
         results = st.session_state.lore_explanation
-        fidelity = results.get("fidelity", 0.0)
+        evaluator = ExplanationEvaluator()
+        metrics = evaluator.evaluate(results, explainer_type="LORE4Groups")
         details = results.get("details", {})
-        gild_score = calculate_gild_for_explanations(details, "LORE4Groups")
 
         # Fidelity metrics
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric(f"{item_type}s Explained", len(details))
         with col2:
-            if fidelity > 0.7:
+            fidelity_score = metrics.get("fidelity", 0.0)
+            if fidelity_score > 0.7:
                 font_color = "rgb(52, 142, 79)"
                 background_color = "rgba(224, 240, 229, 0.7)"
                 quality_text = "High"
-            elif fidelity > 0.3:
+            elif fidelity_score > 0.3:
                 font_color = "rgb(209, 126, 32)"
                 background_color = "rgba(251, 236, 219, 0.7)"
                 quality_text = "Moderate"
@@ -1734,7 +1705,7 @@ elif chosen_explainer == explainer_options[2]:
             </div>
             """
 
-            percentage_value = f"{fidelity * 100:.1f}%"
+            percentage_value = f"{fidelity_score * 100:.1f}%"
 
             st.markdown(
                 f"""
@@ -1752,7 +1723,7 @@ elif chosen_explainer == explainer_options[2]:
         with col3:
             st.metric(
                 "Explanation Diversity (GILD)",
-                f"{gild_score:.4f}",
+                f"{metrics.get('gild', 0.0):.4f}",
                 help="Gaussian Intra-List Diversity. Measures how varied the generated factual rules are. Higher is better.",
             )
 
@@ -1837,7 +1808,7 @@ elif chosen_explainer == explainer_options[2]:
                         )
         else:
             st.info(
-                f"No explanations were generated. This may indicate insufficient data overlap between group members' preferences."
+                "No explanations were generated. This may indicate insufficient data overlap between group members' preferences."
             )
 
     def get_item_metadata(item_id, data_reader=None, item_type="Item"):
@@ -1856,7 +1827,8 @@ elif chosen_explainer == explainer_options[2]:
                 return f"{item_type} {original_id}", set()
 
             return f"{item_type} {item_id}", set()
-        except:
+        except Exception as e:
+            st.warning(f"Metadata retrieval failed for item {item_id}: {e}")
             return f"{item_type} {item_id}", set()
 
     def is_genre_related_rule(rule):
@@ -2041,7 +2013,11 @@ elif chosen_explainer == explainer_options[2]:
                     "❌ No recommendations available. Please generate recommendations first."
                 )
                 st.stop()
-
+                if st.session_state.lore_item_matrix is None:
+                    st.error(
+                        "❌ Item profiles are not fully prepared. Please click 'Prepare Item Profiles' again."
+                    )
+                    st.stop()
             with st.spinner(
                 "Building local decision trees and generating explanations..."
             ):
@@ -2078,8 +2054,18 @@ elif chosen_explainer == explainer_options[2]:
                     store_genre_profiles(movies_content)
                     genre_profiles = {
                         movie_id: data["genres"]
+                        if isinstance(data["genres"], set)
+                        else set(data["genres"].split("|"))
+                        if isinstance(data["genres"], str)
+                        else set()
                         for movie_id, data in movies_content.items()
                     }
+
+                    if st.session_state.lore_item_matrix is None:
+                        st.error(
+                            "❌ Item label matrix is not prepared. Please click 'Prepare Item Profiles' again."
+                        )
+                        st.stop()
 
                     explainer = LORE4GroupsExplainer(
                         st.session_state.lore_item_profiles,

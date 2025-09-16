@@ -199,7 +199,8 @@ class GroupInteractionHandler:
         ]["itemId"].unique()
 
         # Convert back to original item IDs
-        return original_data.get_original_item_id(group_items)
+        original_ids = original_data.get_original_item_id(group_items.tolist())
+        return np.array(original_ids)
 
     def get_common_rated_items(
         self, group: List[Union[int, str]], original_data: DataReader
@@ -235,7 +236,10 @@ class GroupInteractionHandler:
             common_items = set.intersection(*rated_items_per_member)
             common_items_array = np.array(list(common_items))
             # Convert back to original item IDs
-            return original_data.get_original_item_id(common_items_array)
+            original_ids = original_data.get_original_item_id(
+                common_items_array.tolist()
+            )
+            return np.array(original_ids)
         else:
             return np.array([])
 
