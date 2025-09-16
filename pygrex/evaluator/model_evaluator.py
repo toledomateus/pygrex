@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 
 
-class Evaluator:
-    disc_functions = ['log', 'linear']
+class ModelEvaluator:
+    disc_functions = ["log", "linear"]
 
-    def __init__(self, test_set, top_n: int = 10, discount_function: str = 'log'):
+    def __init__(self, test_set, top_n: int = 10, discount_function: str = "log"):
         self.test_set = test_set
         self._top_n = top_n
         assert discount_function in self.disc_functions, "Wrong Discount Function."
@@ -39,10 +39,12 @@ class Evaluator:
         # count hits per user
         hits_per_user = self.count_positives(test_in_top_n)
         # merge with the entire list of positive items for user
-        hits_per_user = hits_per_user.merge(self.count_positives(self.test_set),
-                                            on='userId',
-                                            suffixes=('_true', ''),
-                                            how='right')
+        hits_per_user = hits_per_user.merge(
+            self.count_positives(self.test_set),
+            on="userId",
+            suffixes=("_true", ""),
+            how="right",
+        )
         # if there are users with 0 hits the merge will have NA.
         hits_per_user = hits_per_user.fillna(0)
         # get the hit rate per user
@@ -60,8 +62,9 @@ class Evaluator:
         # check whether there are top_n items per user
         top_n_recommendations = self.filter_to_top_n(recommendations)
         # find the hits
-        test_in_top_n = pd.merge(top_n_recommendations, self.test_set,
-                                 on=['userId', 'itemId'])
+        test_in_top_n = pd.merge(
+            top_n_recommendations, self.test_set, on=["userId", "itemId"]
+        )
         return test_in_top_n
 
     def filter_to_top_n(self, dataset):
@@ -70,7 +73,7 @@ class Evaluator:
         :param dataset: dataframe, columns = ['userId', 'itemId', 'rank']
         :return: dataframe, columns = ['userId', 'itemId', 'rank']
         """
-        return dataset[dataset['rank'] <= self.top_n]
+        return dataset[dataset["rank"] <= self.top_n]
 
     def cal_ndcg(self, recommendations):
         """
@@ -93,12 +96,12 @@ class Evaluator:
         iDCG = self.cal_idcg()
 
         # join to check if there are users in the test without hits
-        nDCG = iDCG.merge(DCG, on='userId', how='left')
+        nDCG = iDCG.merge(DCG, on="userId", how="left")
         nDCG = nDCG.fillna(0)
         # normalize
-        nDCG['ndcg'] = nDCG['dcg'] / nDCG['idcg']
+        nDCG["ndcg"] = nDCG["dcg"] / nDCG["idcg"]
 
-        return nDCG['ndcg'].mean()
+        return nDCG["ndcg"].mean()
 
     def cal_dcg(self, hits):
         """
@@ -108,14 +111,16 @@ class Evaluator:
         """
         # todo: the gain so far is set to a constant.
 
-        if self.discount_function == 'log':
-            hits['discounted_gain'] = np.log(2) / np.log(hits['rank'] + 1)
-        elif self.discount_function == 'linear':
-            hits['discounted_gain'] = 1 / hits['rank']
+        if self.discount_function == "log":
+            hits["discounted_gain"] = np.log(2) / np.log(hits["rank"] + 1)
+        elif self.discount_function == "linear":
+            hits["discounted_gain"] = 1 / hits["rank"]
 
-        DCG = hits.groupby('userId')['discounted_gain'].sum()
+        DCG = hits.groupby("userId")["discounted_gain"].sum()
 
-        return pd.DataFrame({'userId': hits['userId'].unique(), 'dcg': DCG}).reset_index(drop=True)
+        return pd.DataFrame(
+            {"userId": hits["userId"].unique(), "dcg": DCG}
+        ).reset_index(drop=True)
 
     def cal_idcg(self):
         """
@@ -125,14 +130,14 @@ class Evaluator:
         # create a fake ranking for test set items.
         # We assume that the items in the test set are all on the Top-N list.
         count_positives = self.count_positives(self.test_set)
-        ideal_rank = [i for x in count_positives['positive'] for i in (range(1, x + 1))]
+        ideal_rank = [i for x in count_positives["positive"] for i in (range(1, x + 1))]
         test_ideal_ranking = self.test_set.copy()
-        test_ideal_ranking['rank'] = ideal_rank
+        test_ideal_ranking["rank"] = ideal_rank
         # Filter to have at most top-N items.
         test_ideal_ranking = self.filter_to_top_n(test_ideal_ranking)
         # get the dcg for the ideal ranking
         idcg = self.cal_dcg(test_ideal_ranking)
-        idcg = idcg.rename(columns={'dcg': 'idcg'})
+        idcg = idcg.rename(columns={"dcg": "idcg"})
         return idcg
 
     @staticmethod
@@ -143,14 +148,15 @@ class Evaluator:
         :return: dataframe, columns = ['userId', 'positive']
         """
         users_with_positives = dataset.userId.unique()
-        positives_per_user = dataset.groupby('userId')['itemId'].count()
-        positives_per_user = pd.DataFrame({'userId': users_with_positives,
-                                           'positive': positives_per_user})
+        positives_per_user = dataset.groupby("userId")["itemId"].count()
+        positives_per_user = pd.DataFrame(
+            {"userId": users_with_positives, "positive": positives_per_user}
+        )
 
         return positives_per_user.reset_index(drop=True)
 
 
-#if __name__ == '__main__':
+# if __name__ == '__main__':
 ##    recoms = pd.DataFrame({
 #        'userId': [1, 1, 1, 2, 2, 2, 3, 3, 3],
 #        'itemId': [1, 2, 3, 4, 1, 2, 2, 3, 4],
@@ -169,5 +175,5 @@ class Evaluator:
 #    eval.top_n = 3
 #    assert eval.top_n == 3, 'changing of top n'
 
- #   print(eval.cal_hit_ratio(recoms))
- #   print(eval.cal_ndcg(recoms))
+#   print(eval.cal_hit_ratio(recoms))
+#   print(eval.cal_ndcg(recoms))

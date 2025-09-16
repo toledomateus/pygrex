@@ -2,14 +2,18 @@ import itertools
 from typing import Dict, List, Union
 
 from pygrex.config import cfg
-from pygrex.data_reader.data_reader import DataReader
-from pygrex.data_reader.group_interaction_handler import GroupInteractionHandler
-from pygrex.models.recommender_model import RecommenderModel
-from pygrex.recommender.group_recommender import GroupRecommender
+from pygrex.data_reader import DataReader, GroupInteractionHandler
+from pygrex.models import RecommenderModel
+from pygrex.recommender import GroupRecommender
+from pygrex.utils import SlidingWindowRanker, SlidingWindow, AggregationStrategy
 
 
 class SlidingWindowExplainer:
     """
+    Stratigi, M., Bikakis, N., Stefanidis, K.: Counterfactual explanations for group
+    recommendations. In: Proceedings of the 27th International Workshop on Design,
+    Optimization, Languages and Analytical Processing of Big Data (DOLAP 2025).
+
     A class that uses a sliding window approach to find counterfactual explanations
     for group recommendation systems.
 
@@ -19,15 +23,14 @@ class SlidingWindowExplainer:
 
     def __init__(
         self,
-        cfg: cfg,  # type: ignore
+        cfg: cfg,
         data: DataReader,
         group_handler: GroupInteractionHandler,
         members: List[Union[str, int]],
         target_item: Union[str, int],
-        candidate_items: List[Union[str, int]],
-        aggregation_strategy,
-        sliding_window=None,
-        model: RecommenderModel = None,  # type: ignore
+        model: RecommenderModel,
+        aggregation_strategy: AggregationStrategy = AggregationStrategy.AVG_PREDICTIONS,
+        window_size=3,
     ):
         """
         Initialize the SlidingWindowExplainer.
@@ -38,23 +41,21 @@ class SlidingWindowExplainer:
             group_handler: Object that handles group data modifications
             members: List of user IDs in the group
             target_item: The item ID for which explanation is sought
-            candidate_items: List of candidate items for recommendations
-            sliding_window: SlidingWindow object (if None, will need to be set later)
-            model: Recommender model to use for predictions
-
+            model: Recommender model to use for predictions,
+            aggregation_strategy: Strategy to aggregate individual recommendations,
+            window_size: Size of the sliding window
         """
+        self.cfg = cfg
         self.data = data
         self.group_handler = group_handler
         self.members = members
         self.target_item = target_item
-        self.candidate_items = candidate_items
-        self.cfg = cfg
-        self.sliding_window = sliding_window
-        self.aggregation_strategy = aggregation_strategy
         self.model = model
+        self.aggregation_strategy = (aggregation_strategy,)
+        self.window_size = window_size
 
         # Results tracking
-        self.explanations_found: Dict[int, List[Union[str, int]]] = {}
+        self.explanations_found: Dict[int, Dict] = {}
         self.calls = 0
         self.max_calls = 1000
         self.item_metrics = {}
@@ -67,31 +68,44 @@ class SlidingWindowExplainer:
         """Store the pre-calculated metric scores for all items."""
         self.item_metrics = metrics
 
-    def find_explanation(self) -> Dict[int, List[Union[str, int]]]:
+    def find_explanation(
+        self,
+        items_rated_by_group: List[Union[str, int]],
+        group_predictions: Dict,
+        top_recommendation: Union[str, int],
+        ranking_weights: Dict[str, float],
+    ) -> Dict[int, Dict]:
         """
-        Find counterfactual explanations using sliding window approach.
+        Find counterfactual explanations using the full, encapsulated process.
+
+        Args:
+            items_rated_by_group: All items rated by any member of the group.
+            group_predictions: The original individual predictions from the recommender.
+            top_recommendation: The original top recommended item.
+            ranking_weights: The weights from the UI for each ranking component.
 
         Returns:
-            dict: Dictionary of found explanations with call number as key
+            A dictionary of found explanations, including their justification metrics.
         """
-        if not self.sliding_window:
-            raise ValueError(
-                "Sliding window has not been set. Use set_sliding_window() first."
-            )
 
-        # Get initial group recommendations to compare against
-        original_group_rec = self.target_item
-        if not original_group_rec:
-            print("Could not find any items")
-            return {}
+        self.calls = 0
+        ranker = SlidingWindowRanker(config={})
+        ranker.set_group_recommender_values(group_predictions, top_recommendation)
+        ranked_items, self.item_metrics = ranker.generate_ranked_items(
+            all_rated_items=items_rated_by_group,
+            data=self.data,
+            group_members=self.members,
+            component_weights=ranking_weights,
+        )
+
+        sliding_window = SlidingWindow(
+            sequence=ranked_items, window_size=self.window_size
+        )
 
         found = 0
-        self.calls = 0
-        wind_count = 0
-
         while True:
             # Get the sliding window
-            big_window = self.sliding_window.get_next_window()
+            big_window = sliding_window.get_next_window()
 
             # Check exit conditions
             if big_window is None or found > 0 or self.calls >= self.max_calls:
@@ -99,14 +113,13 @@ class SlidingWindowExplainer:
 
             # Count calls and windows
             self.calls += 1
-            wind_count += 1
 
             # Test if removing this window affects recommendations
-            if self._test_window_removal(big_window, original_group_rec):
+            if self._test_window_removal(big_window, self.target_item):
                 # A counterfactual explanation has been found
                 found += 1
                 # Look for minimal subsets within this window
-                self._find_minimal_subset(big_window, original_group_rec)
+                self._find_minimal_subset(big_window, self.target_item)
 
         if found == 0:
             print("Explanation could not be found")
@@ -169,7 +182,7 @@ class SlidingWindowExplainer:
         )
 
         # Return new recommendations
-        return group_recommender.get_group_recommendations(top_n)  # type: ignore
+        return group_recommender.get_group_recommendations(top_n)
 
     def _create_data_reader_and_prepare(self, changed_data):
         """
@@ -278,11 +291,12 @@ class SlidingWindowExplainer:
             item: self.item_metrics.get(item, {}) for item in explanation_items
         }
 
-        self.explanations_found[self.calls] = {  # type: ignore
+        self.explanations_found[self.calls] = {
             "items": explanation_items,
             "new_rec": new_rec,
             "metrics": explanation_metrics,
         }
+
         exp_size = len(explanation_items)
 
         print(f"{exp_size}\t{self.calls}\t{item_intensity}\t{user_intensity}")
@@ -335,7 +349,7 @@ class SlidingWindowExplainer:
             list: Average intensity for each item in the explanation.
         """
         # Convert user IDs to internal representation
-        internal_group_ids = [int(data.get_new_user_id(user_id)) for user_id in members]  # type: ignore
+        internal_group_ids = [int(data.get_new_user_id(user_id)) for user_id in members]
 
         group_size = len(members)
         item_intensities = []

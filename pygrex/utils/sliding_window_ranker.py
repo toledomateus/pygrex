@@ -1,5 +1,5 @@
 import operator
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
 import numpy as np
 import pandas as pd
@@ -8,24 +8,28 @@ from scipy.signal import (
     peak_widths,
 )
 
-from pygrex.data_reader.data_reader import DataReader
+from pygrex.data_reader import DataReader
 
 
-class SlidingWindowEvaluator:
+class SlidingWindowRanker:
     """
-    Evaluator of Stratigi's article for group recommendations.
+    Stratigi, M., Bikakis, N., Stefanidis, K.: Counterfactual explanations for group
+    recommendations. In: Proceedings of the 27th International Workshop on Design,
+    Optimization, Languages and Analytical Processing of Big Data (DOLAP 2025)
     """
 
     def __init__(self, config: Dict[str, Any]):
         """
-        Initialize the SlidingWindowEvaluator.
+        Initialize the SlidingWindowRanker.
 
         Args:
             config: Configuration parameters for the evaluator
         """
         self.config = config
-        self.group_predictions = None
-        self.top_recommendation = None
+        self.group_predictions: Optional[
+            Dict[Union[str, int], Dict[Union[str, int], float]]
+        ] = None
+        self.top_recommendation: Optional[Union[str, int]] = None
 
     def set_group_recommender_values(
         self,
@@ -53,7 +57,7 @@ class SlidingWindowEvaluator:
             Dictionary with evaluation metrics
         """
         # Implementation would go here
-        pass
+        return {}
 
     def calculate_item_popularity_score(
         self, items: List[Union[str, int]], data: DataReader
@@ -87,6 +91,9 @@ class SlidingWindowEvaluator:
         padded_min = min_count - (
             range_value / 100
         )  # Subtract 1% of range from minimum
+
+        if padded_range == 0:
+            padded_range = 1  # Avoid division by zero
 
         # Normalize popularity values to [0,1]
         popularity_mask = {}
@@ -198,6 +205,9 @@ class SlidingWindowEvaluator:
             range_value / 100
         )  # Subtract 1% of range from minimum
 
+        if padded_range == 0:
+            return 0.0
+
         normalized_score = (average_score - padded_min) / padded_range
         return float(normalized_score)
 
@@ -218,6 +228,9 @@ class SlidingWindowEvaluator:
             1 means all group members have interacted with the item
         """
         # Convert item ID to internal format
+        if data is None:
+            print("Error: DataReader object is None. Cannot convert item_id.")
+            return 0.0, {user_id: 0.0 for user_id in members}, pd.DataFrame()
         internal_item_id = data.get_new_item_id(item_id)
 
         # Convert all user IDs to internal format
@@ -262,6 +275,9 @@ class SlidingWindowEvaluator:
             - Normalizes the resulting average to [0,1] with 1% padding
         """
         # Convert item ID to internal format
+        if data is None:
+            print("Error: DataReader object is None. Cannot convert item_id.")
+            return 0.0
         internal_item_id = data.get_new_item_id(item_id)
 
         # Convert all user IDs to internal format
@@ -290,6 +306,9 @@ class SlidingWindowEvaluator:
             range_value / 100
         )  # Subtract 1% of range from minimum
 
+        if padded_range == 0:
+            return 0.0
+
         normalized_rating = (average_rating - padded_min) / padded_range
         return float(normalized_rating)
 
@@ -297,7 +316,7 @@ class SlidingWindowEvaluator:
         self,
         members: List[Union[str, int]],
         item_id: Union[str, int],
-        data: DataReader = None,
+        data: Optional[DataReader] = None,
         peak_norm_min_height: float = 0.1,
         peak_norm_min_prominence: float = 0.05,
         peak_min_distance: int = 3,
@@ -324,23 +343,22 @@ class SlidingWindowEvaluator:
 
         if not members:
             print("Error: No group members provided for trending score calculation.")
-            return 0.0, None, None
+            return 0.0, {}, pd.DataFrame()
 
-        _df = None
+        _df = pd.DataFrame()
         if data is not None and isinstance(data, DataReader):
             _df = data.dataset.copy()
         else:
-            # Fallback logic for loading _df
             if data is not None:
                 print(
-                    f"Warning: data was provided but is not a DataReader object (type: {type(type(data))})."
+                    f"Warning: data was provided but is not a DataReader object (type: {type(data)})."
                 )
 
         if _df.empty:
             print(
                 "Error: The DataFrame (_df) is empty. Cannot calculate score or plot."
             )
-            return 0.0, None, None
+            return 0.0, {}, pd.DataFrame()
 
         required_columns = [
             "userId",
@@ -353,7 +371,7 @@ class SlidingWindowEvaluator:
             print(
                 f"Error: Missing required columns in DataFrame: {', '.join(missing_columns)}"
             )
-            return 0.0, None, None
+            return 0.0, {}, pd.DataFrame()
 
         try:
             if "timestamp_dt" not in _df.columns or _df["timestamp_dt"].isnull().all():
@@ -362,7 +380,10 @@ class SlidingWindowEvaluator:
                 _df["year_month"] = _df["timestamp_dt"].dt.to_period("M")
         except Exception as e:
             print(f"Error during timestamp conversion or year-month extraction: {e}")
-            return 0.0, None
+            return 0.0, {}, pd.DataFrame()
+
+        if data is None:  # Should not happen if _df is not empty, but as a safeguard
+            return 0.0, {}, pd.DataFrame()
 
         # Convert item ID to internal format
         internal_item_id = data.get_new_item_id(item_id)
@@ -373,7 +394,7 @@ class SlidingWindowEvaluator:
         # Filter data for the specific item ID only
         item_df = _df[_df["itemId"] == internal_item_id]
         if item_df.empty:
-            return 0.0, {user_id: 0.0 for user_id in members}, None
+            return 0.0, {user_id: 0.0 for user_id in members}, pd.DataFrame()
 
         # movie_ratings_per_month contains original rating counts
         movie_ratings_per_month = (
@@ -383,7 +404,7 @@ class SlidingWindowEvaluator:
         )
 
         if movie_ratings_per_month.empty:
-            return 0.0, {user_id: 0.0 for user_id in members}, None
+            return 0.0, {user_id: 0.0 for user_id in members}, pd.DataFrame()
 
         hype_periods_for_item = None
 
@@ -391,11 +412,11 @@ class SlidingWindowEvaluator:
         group_sorted = movie_ratings_per_month.sort_values("year_month").reset_index(
             drop=True
         )
-        original_ratings = group_sorted["rating_count"].values
+        original_ratings = group_sorted["rating_count"].to_numpy()
 
         # Normalization Step
-        min_rating = original_ratings.min()
-        max_rating = original_ratings.max()
+        min_rating = np.min(original_ratings)
+        max_rating = np.max(original_ratings)
 
         normalized_ratings = None
         if (
@@ -407,7 +428,7 @@ class SlidingWindowEvaluator:
         elif len(original_ratings) > 0:
             normalized_ratings = np.zeros_like(original_ratings, dtype=float)
         else:  # No ratings for this item in group_sorted (should not happen if groupby is correct)
-            return 0.0, {user_id: 0.0 for user_id in members}, None
+            return 0.0, {user_id: 0.0 for user_id in members}, pd.DataFrame()
 
         # Peak Detection on Normalized Data
         peaks_indices, properties = find_peaks(
@@ -513,7 +534,7 @@ class SlidingWindowEvaluator:
         all_rated_items: List[Union[str, int]],
         data: DataReader,
         group_members: List[Union[str, int]],
-        component_weights: Dict[str, float] = None,
+        component_weights: Optional[Dict[str, float]] = None,
     ) -> tuple[List[Union[str, int]], Dict]:
         """
         Ranks items based on multiple scoring factors for a group of users.
@@ -538,6 +559,10 @@ class SlidingWindowEvaluator:
         if self.group_predictions is None:
             raise ValueError(
                 "User predictions not set. Call set_group_recommender_values first."
+            )
+        if self.top_recommendation is None:
+            raise ValueError(
+                "Top recommendation not set. Call set_group_recommender_values first."
             )
 
         # Default weights if not provided
