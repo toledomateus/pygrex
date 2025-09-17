@@ -55,7 +55,7 @@ class Splitter:
         return train, test
 
     @staticmethod
-    def split_leave_n_out(data: DataReader, n: int = 1, frac: float = None):
+    def split_leave_n_out(data: DataReader, n: int = 1, frac: float | None = None):
         """
         Leave N latest interactions out train/test split.
         Ref:
@@ -137,7 +137,7 @@ class Splitter:
 
         neg_sample = self.sample_negative(data, negative_sample_size)
 
-        return train, test.append(neg_sample)
+        return train, pd.concat([test, neg_sample], ignore_index=True)
 
     @staticmethod
     def sample_negative(data, negative_sample_size):

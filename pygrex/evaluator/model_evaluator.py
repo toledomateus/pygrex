@@ -76,7 +76,7 @@ class ModelEvaluator:
         return dataset[dataset["rank"] <= self.top_n]
 
     def cal_ndcg(self, recommendations):
-        """
+        r"""
         For evaluating the top-N recommendation list, we also provide the normalized Discounted Cumulative Gain at N
         recommendation (nDCG@N)  computed as the ratio of the Discounted Cumulative Gain(DCG) with the ideal Discounted
         Cumulative Gain(IDCG):
