@@ -1,7 +1,9 @@
+from typing import Optional, Union
 import numpy as np
 import scipy.sparse as sp
+
 from .recommender_model import RecommenderModel
-from ..data_reader import DataReader
+from pygrex.data_reader import DataReader
 
 
 class KNNBasic(RecommenderModel):
@@ -17,7 +19,7 @@ class KNNBasic(RecommenderModel):
         sim_options (dict): Similarity options. Default pearson, user-based.
     """
 
-    def __init__(self, k: int = 50, min_k: int = 3, sim_options: dict = None):
+    def __init__(self, k: int = 50, min_k: int = 3, sim_options: Optional[dict] = None):
         super().__init__()
         self.k = k
         self.min_k = min_k
@@ -34,24 +36,24 @@ class KNNBasic(RecommenderModel):
             )
 
         # Model attributes
-        self.trainset = None
-        self.global_mean = 0
-        self.user_biases = None
-        self.item_biases = None
-        self.num_users = None
-        self.num_items = None
+        self.trainset: Optional[sp.csr_matrix] = None
+        self.global_mean: float = 0
+        self.user_biases: Optional[np.ndarray] = None
+        self.item_biases: Optional[np.ndarray] = None
+        self.num_users: Optional[int] = None
+        self.num_items: Optional[int] = None
 
         # For memory-efficient similarity computation
-        self.user_means = None
+        self.user_means: Optional[np.ndarray] = None
 
-    def fit(self, dataset: DataReader) -> None:
+    def fit(self, data: DataReader) -> None:
         """
         Trains the KNN model with improved memory efficiency.
         """
         print("Fitting the improved KNNBasic model...")
-        df = dataset.dataset
-        self.num_users = dataset.num_user
-        self.num_items = dataset.num_item
+        df = data.dataset
+        self.num_users = data.num_user
+        self.num_items = data.num_item
 
         print(
             f"Building ratings matrix for {self.num_users} users and {self.num_items} items..."
@@ -103,6 +105,7 @@ class KNNBasic(RecommenderModel):
         Compute Pearson correlation similarity between two users.
         This works better than cosine similarity for collaborative filtering.
         """
+        assert self.trainset is not None
         # Get rating vectors for both users
         user1_ratings = self.trainset[user1_id].toarray().flatten()
         user2_ratings = self.trainset[user2_id].toarray().flatten()
@@ -147,6 +150,7 @@ class KNNBasic(RecommenderModel):
         Get the top-k most similar users who have rated the given item.
         """
         # Find users who rated this item
+        assert self.trainset is not None
         item_col = self.trainset[:, item_id]  # type: ignore
         neighbor_candidates, _ = item_col.nonzero()
 
@@ -154,7 +158,7 @@ class KNNBasic(RecommenderModel):
         neighbor_candidates = neighbor_candidates[neighbor_candidates != user_id]
 
         if len(neighbor_candidates) == 0:
-            return [], [], []
+            return np.array([]), np.array([]), np.array([])
 
         # Compute similarities
         similarities = []
@@ -167,7 +171,7 @@ class KNNBasic(RecommenderModel):
         top_k = similarities[: min(self.k, len(similarities))]
 
         if len(top_k) < self.min_k:
-            return [], [], []
+            return np.array([]), np.array([]), np.array([])
 
         # Extract data
         neighbor_sims = np.array([sim for sim, _ in top_k])
@@ -178,13 +182,19 @@ class KNNBasic(RecommenderModel):
 
         return neighbor_sims, neighbor_ids, neighbor_ratings
 
-    def predict(self, user_id: int, item_id: int) -> float:
+    def predict(self, user_id: Union[int, str], item_id: Union[int, str]) -> float:
         """
         Predict rating for a user-item pair using KNN.
         """
         if self.trainset is None:
             raise RuntimeError("Model must be trained first using fit() method.")
 
+        assert self.num_users is not None
+        assert self.num_items is not None
+        assert self.user_biases is not None
+        assert self.item_biases is not None
+        user_id = int(user_id)
+        item_id = int(item_id)
         # Handle out-of-bounds users/items
         if user_id >= self.num_users or item_id >= self.num_items:
             return self.global_mean

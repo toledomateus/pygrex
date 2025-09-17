@@ -11,7 +11,7 @@ class SVD(RecommenderModel):
         n_epochs=25,
         lr=0.007,
         reg=0.1,
-        init_mean=0,
+        init_mean=0.0,
         init_std=0.1,
         random_state=42,
         early_stopping=True,
@@ -35,10 +35,11 @@ class SVD(RecommenderModel):
         # Training history
         self.training_rmse = []
 
-    def fit(self, dataset: DataReader, validation_data=None):
-        print("Fitting the improved SVD model...")
-        df = dataset.dataset
-        num_users, num_items = dataset._num_user, dataset._num_item
+    def fit(self, data: DataReader, validation_data=None):
+        df = data.dataset
+        if data._num_user is None or data._num_item is None:
+            raise ValueError("The number of users and items cannot be None.")
+        num_users, num_items = data._num_user, data._num_item
 
         # Initialize random number generator
         rng = np.random.RandomState(self.random_state)
@@ -137,15 +138,22 @@ class SVD(RecommenderModel):
 
         return sqrt(total_error / count) if count > 0 else 0
 
-    def predict(self, user_id: int, item_id: int):
-        if self.user_factors is None:
+    def predict(self, user_id: int | str, item_id: int | str) -> float:
+        # Check that all model components are initialized
+        if (
+            self.user_factors is None
+            or self.item_factors is None
+            or self.user_biases is None
+            or self.item_biases is None
+            or self.global_mean is None
+        ):
             raise RuntimeError("The model has not been trained yet.")
 
-        # Handle unknown users/items
-        if (
-            user_id >= self.user_factors.shape[0]
-            or item_id >= self.item_factors.shape[0]
-        ):
+        try:
+            user_id = int(user_id)
+            item_id = int(item_id)
+        except (ValueError, TypeError):
+            # If conversion fails, return the global mean rating
             return self.global_mean
 
         # Make prediction

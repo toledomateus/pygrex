@@ -6,14 +6,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
+from typing import Union
 
-from pygrex.data_reader.user_item_rating_dataset import UserItemRatingDataset
-from pygrex.utils.emp_loss import EMFLoss
-from pygrex.utils.torch_utils import use_optimizer
+from pygrex.data_reader import UserItemRatingDataset, DataReader
+from pygrex.utils import EMFLoss
 from .py_torch_model import PyTorchModel
+from .recommender_model import RecommenderModel
 
 
-class EMFModel:
+class EMFModel(RecommenderModel):
     def __init__(
         self,
         learning_rate: float,
@@ -29,7 +30,7 @@ class EMFModel:
         self.epochs = epochs
 
         self.dataset = None
-        self.dataset_metadata = None
+        self.data = None
         self.embedding_user = None
         self.embedding_item = None
         self.optimizer = None
@@ -46,12 +47,13 @@ class EMFModel:
 
         self.criterion = EMFLoss()
 
-    def fit(self, dataset_metadata):
-        self.dataset_metadata = dataset_metadata
-        self.dataset = dataset_metadata.dataset
+    def fit(self, data: DataReader) -> None:
+        self.data = data
+        self.dataset = data.dataset
 
-        num_users = self.dataset_metadata.num_user
-        num_items = self.dataset_metadata.num_item
+        assert self.data is not None
+        num_users = self.data.num_user
+        num_items = self.data.num_item
 
         self.embedding_user = np.random.uniform(
             low=0, high=0.5 / self.latent_dim, size=(num_users, self.latent_dim)
@@ -64,12 +66,13 @@ class EMFModel:
         self.compute_explainability()
 
         with tqdm(total=self.epochs) as progress:
+            assert self.dataset is not None
             for epoch in range(self.epochs):
                 self.dataset = self.dataset.sample(frac=1)
                 loss = []
                 for _, row in self.dataset.iterrows():
-                    user_id = int(row.userId)  # Ensure userId is an integer
-                    item_id = int(row.itemId)  # Ensure itemId is an integer
+                    user_id = int(row.userId)
+                    item_id = int(row.itemId)
 
                     p_ui = self.predict(user_id, item_id)
 
@@ -77,26 +80,28 @@ class EMFModel:
 
                     loss.append(e_ui**2)
 
-                    # u′i=ui+η·(2·(rij−ui·vTj)·vj−β·ui−λ·sgn(ui−vj)·Eij)
+                    assert self.embedding_item is not None
+                    assert self.embedding_user is not None
                     delta_u = 2 * e_ui * self.embedding_item[item_id, :]
                     delta_u -= self.reg_term * self.embedding_user[user_id, :]
                     temp = np.sign(
                         self.embedding_item[item_id, :]
                         - self.embedding_user[user_id, :]
                     )
+                    assert self.explainability_matrix is not None
                     temp *= (
                         self.expl_reg_term
                         * self.explainability_matrix[user_id, item_id]
                     )
                     delta_u -= temp
 
-                    # v′j=vj+η·(2·(rij−ui·vTj)·ui−β·vj−λ·sgn(ui−vj)·Eij)
                     delta_v = 2 * e_ui * self.embedding_user[user_id, :]
                     delta_v -= self.reg_term * self.embedding_item[item_id, :]
                     temp = np.sign(
                         self.embedding_user[user_id, :]
                         - self.embedding_item[item_id, :]
                     )
+                    assert self.explainability_matrix is not None
                     temp *= (
                         self.expl_reg_term
                         * self.explainability_matrix[user_id, item_id]
@@ -109,30 +114,29 @@ class EMFModel:
                 progress.update(1)
 
                 progress.set_postfix({"MSE": sum(loss) / len(loss)})
-        return True
 
     def compute_explainability(self):
+        assert self.dataset is not None
         ds = self.dataset.pivot(index="userId", columns="itemId", values="rating")
         ds = ds.fillna(0)
         ds = sparse.csr_matrix(ds)
         sim_matrix = cosine_similarity(ds)
         min_val = sim_matrix.min() - 1
 
-        for i in range(self.dataset_metadata.num_user):
+        assert self.data is not None
+        for i in range(self.data.num_user):
             sim_matrix[i, i] = min_val
 
             knn_to_user_i = (-sim_matrix[i, :]).argsort()[: self.knn]
             self.sim_users[i] = knn_to_user_i
 
-        self.explainability_matrix = np.zeros(
-            (self.dataset_metadata.num_user, self.dataset_metadata.num_item)
-        )
+        self.explainability_matrix = np.zeros((self.data.num_user, self.data.num_item))
 
         filter_dataset_on_threshold = self.dataset[
             self.dataset["rating"] >= self.positive_threshold
         ]
 
-        for i in range(self.dataset_metadata.num_user):
+        for i in range(self.data.num_user):
             knn_to_user_i = self.sim_users[i]
 
             rated_items_by_sim_users = filter_dataset_on_threshold[
@@ -143,7 +147,7 @@ class EMFModel:
             sim_scores = sim_scores["rating"].sum()
             sim_scores = sim_scores.reset_index()
 
-            self.explainability_matrix[i, sim_scores.itemId] = (
+            self.explainability_matrix[i, sim_scores.itemId.astype(int)] = (
                 sim_scores.rating.to_list()
             )
 
@@ -151,37 +155,56 @@ class EMFModel:
             self.explainability_matrix
         )
 
-    def predict(self, user_id, item_id):
-        # Ensure user_id and item_id are integers or lists
-        if isinstance(user_id, np.ndarray):
-            user_id = user_id.tolist()
-        if isinstance(item_id, np.ndarray):
-            item_id = item_id.tolist()
+    def predict(
+        self, user_id: Union[int, str], item_id: Union[int, str]
+    ) -> Union[float, list]:
+        user_id_processed = user_id
+        item_id_processed = item_id
 
-        if isinstance(user_id, list) or isinstance(item_id, list):
-            if not isinstance(user_id, list):
-                user_id = [user_id]
-            if not isinstance(item_id, list):
-                item_id = [item_id]
+        if isinstance(user_id_processed, np.ndarray):
+            user_id_processed = user_id_processed.tolist()
+        if isinstance(item_id_processed, np.ndarray):
+            item_id_processed = item_id_processed.tolist()
 
-            # Predict for multiple users or items
+        is_list_input = isinstance(user_id_processed, list) or isinstance(
+            item_id_processed, list
+        )
+
+        if is_list_input:
+            user_id_list = (
+                user_id_processed
+                if isinstance(user_id_processed, list)
+                else [user_id_processed]
+            )
+            item_id_list = (
+                item_id_processed
+                if isinstance(item_id_processed, list)
+                else [item_id_processed]
+            )
             predictions = []
-            for u in user_id:
+            for u in user_id_list:
+                assert self.embedding_user is not None
+                assert self.embedding_item is not None
                 pred = [
-                    np.dot(self.embedding_user[u, :], self.embedding_item[i, :])
-                    for i in item_id
+                    np.dot(
+                        self.embedding_user[int(u), :], self.embedding_item[int(i), :]
+                    )
+                    for i in item_id_list
                 ]
                 predictions.append(pred)
-            predictions = np.array(predictions)
-            # Ensure the output is flattened if only one user or only one item
-            if len(user_id) == 1 or len(item_id) == 1:
-                predictions = predictions.flatten()
+            predictions_np = np.array(predictions)
 
-            return predictions
+            if len(user_id_list) == 1 or len(item_id_list) == 1:
+                predictions_np = predictions_np.flatten()
+
+            return predictions_np.tolist()
+
         else:
-            # Predict for a single user and item
+            assert self.embedding_user is not None
+            assert self.embedding_item is not None
             return np.dot(
-                self.embedding_user[user_id, :], self.embedding_item[item_id, :]
+                self.embedding_user[int(user_id), :],
+                self.embedding_item[int(item_id), :],
             )
 
     def user_embedding(self):
@@ -232,12 +255,13 @@ class EMFTorchModel(PyTorchModel):
 
         self.criterion = EMFLoss()
 
-    def fit(self, dataset_metadata):
-        self.dataset_metadata = dataset_metadata
-        self.dataset = dataset_metadata.dataset
+    def fit(self, data: DataReader) -> None:
+        self.data = data
+        self.dataset = data.dataset
 
-        num_users = self.dataset_metadata.num_user
-        num_items = self.dataset_metadata.num_item
+        assert self.data is not None
+        num_users = self.data.num_user
+        num_items = self.data.num_item
 
         self.embedding_user = nn.Embedding(
             num_embeddings=num_users, embedding_dim=self.latent_dim
@@ -249,12 +273,11 @@ class EMFTorchModel(PyTorchModel):
 
         self.compute_explainability()
 
-        self.optimizer = use_optimizer(
-            network=self,
-            learning_rate=self.learning_rate,
+        self.optimizer = torch.optim.SGD(
+            self.parameters(),
+            lr=self.learning_rate,
             momentum=self.momentum,
             weight_decay=self.weight_decay,
-            optimizer=self.optimizer_name,
         )
 
         with tqdm(total=self.epochs) as progress:
@@ -263,30 +286,29 @@ class EMFTorchModel(PyTorchModel):
                 loss = self.train_an_epoch(train_loader)
                 progress.update(1)
                 progress.set_postfix({"loss": loss})
-        return True
 
     def compute_explainability(self):
+        assert self.dataset is not None
         ds = self.dataset.pivot(index="userId", columns="itemId", values="rating")
         ds = ds.fillna(0)
         ds = sparse.csr_matrix(ds)
         sim_matrix = cosine_similarity(ds)
         min_val = sim_matrix.min() - 1
 
-        for i in range(self.dataset_metadata.num_user):
+        assert self.data is not None
+        for i in range(self.data.num_user):
             sim_matrix[i, i] = min_val
 
             knn_to_user_i = (-sim_matrix[i, :]).argsort()[: self.knn]
             self.sim_users[i] = knn_to_user_i
 
-        self.explainability_matrix = np.zeros(
-            (self.dataset_metadata.num_user, self.dataset_metadata.num_item)
-        )
+        self.explainability_matrix = np.zeros((self.data.num_user, self.data.num_item))
 
         filter_dataset_on_threshold = self.dataset[
             self.dataset["rating"] >= self.positive_threshold
         ]
 
-        for i in range(self.dataset_metadata.num_user):
+        for i in range(self.data.num_user):
             knn_to_user_i = self.sim_users[i]
 
             rated_items_by_sim_users = filter_dataset_on_threshold[
@@ -297,7 +319,7 @@ class EMFTorchModel(PyTorchModel):
             sim_scores = sim_scores["rating"].sum()
             sim_scores = sim_scores.reset_index()
 
-            self.explainability_matrix[i, sim_scores.itemId] = (
+            self.explainability_matrix[i, sim_scores.itemId.astype(int)] = (
                 sim_scores.rating.to_list()
             )
 
@@ -308,11 +330,11 @@ class EMFTorchModel(PyTorchModel):
         self.explainability_matrix = torch.from_numpy(self.explainability_matrix)
 
     def instance_a_train_loader(self, batch_size):
-        """instance train loader for one training epoch"""
+        assert self.dataset is not None
         dataset = UserItemRatingDataset(
-            user_tensor=torch.LongTensor(self.dataset.userId),
-            item_tensor=torch.LongTensor(self.dataset.itemId),
-            target_tensor=torch.FloatTensor(self.dataset.rating),
+            user_tensor=torch.LongTensor(self.dataset.userId.values),
+            item_tensor=torch.LongTensor(self.dataset.itemId.values),
+            target_tensor=torch.FloatTensor(self.dataset.rating.values),
         )
         return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -333,13 +355,17 @@ class EMFTorchModel(PyTorchModel):
         if self.cuda is True:
             users, items, ratings = users.cuda(), items.cuda(), ratings.cuda()
 
+        assert self.optimizer is not None
         self.optimizer.zero_grad()
 
         ratings_pred = self(users, items)
 
+        assert self.embedding_user is not None
         user_embeddings = self.embedding_user(users)
+        assert self.embedding_item is not None
         item_embeddings = self.embedding_item(items)
 
+        assert self.explainability_matrix is not None
         loss = self.criterion(
             ratings_pred=ratings_pred,
             ratings=ratings,
@@ -356,7 +382,9 @@ class EMFTorchModel(PyTorchModel):
         return loss
 
     def forward(self, user_indices, item_indices):
+        assert self.embedding_user is not None
         user_embeddings = self.embedding_user(user_indices)
+        assert self.embedding_item is not None
         item_embeddings = self.embedding_item(item_indices)
         element_product = torch.mul(user_embeddings, item_embeddings)
         rating = self.affine_output(element_product)

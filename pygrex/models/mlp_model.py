@@ -4,9 +4,10 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.optim import Optimizer
 from tqdm.auto import tqdm
 
-from pygrex.data_reader.user_item_rating_dataset import UserItemRatingDataset
+from pygrex.data_reader import DataReader, UserItemRatingDataset
 from pygrex.utils.torch_utils import use_optimizer
 from .py_torch_model import PyTorchModel
 
@@ -14,8 +15,8 @@ from .py_torch_model import PyTorchModel
 class MLPModel(PyTorchModel):
     def __init__(
         self,
-        learning_rate: int,
-        weight_decay: int,
+        learning_rate: float,
+        weight_decay: float,
         latent_dim: int,
         epochs: int,
         num_negative: int,
@@ -44,18 +45,23 @@ class MLPModel(PyTorchModel):
         self.logistic = torch.nn.Sigmoid()
 
         self.criterion = nn.BCELoss()
+        self.optimizer: Optimizer | None = None
 
-    def fit(self, dataset_metadata):
-        self.optimizer = use_optimizer(
+    def fit(self, data: DataReader):
+        optimizer = use_optimizer(
             network=self,
             weight_decay=self.weight_decay,
             learning_rate=self.learning_rate,
             optimizer=self.optimizer_name,
         )
-        dataset = dataset_metadata.dataset
+        if not isinstance(optimizer, Optimizer):
+            raise TypeError(f"Expected an Optimizer, but got {type(optimizer)}")
+        self.optimizer = optimizer
 
-        num_users = dataset_metadata.num_user
-        num_items = dataset_metadata.num_item
+        dataset = data.dataset
+
+        num_users = data.num_user
+        num_items = data.num_item
 
         self.embedding_user = torch.nn.Embedding(
             num_embeddings=num_users, embedding_dim=self.latent_dim
@@ -76,8 +82,6 @@ class MLPModel(PyTorchModel):
                 progress.update(1)
                 progress.set_postfix({"loss": loss})
 
-        return True
-
     def instance_a_train_loader(self, dataset, num_negatives, batch_size):
         """instance train loader for one training epoch"""
         users, items, ratings = [], [], []
@@ -87,15 +91,22 @@ class MLPModel(PyTorchModel):
         train_ratings["negatives"] = train_ratings["negative_items"].apply(
             lambda x: random.sample(list(x), num_negatives)
         )
+        user_ids = train_ratings["userId"].tolist()
+        item_ids = train_ratings["itemId"].tolist()
+        rating_values = train_ratings["rating"].tolist()
+        negatives_lists = train_ratings["negatives"].tolist()
 
-        for row in train_ratings.itertuples():
-            users.append(int(row.userId))
-            items.append(int(row.itemId))
-            ratings.append(float(row.rating))
-            for i in range(num_negatives):
-                users.append(int(row.userId))
-                items.append(int(row.negatives[i]))
+        for user, item, rating, negatives in zip(
+            user_ids, item_ids, rating_values, negatives_lists
+        ):
+            users.append(user)
+            items.append(item)
+            ratings.append(rating)
+            for neg_item in negatives:
+                users.append(user)
+                items.append(neg_item)
                 ratings.append(float(0))  # negative samples get 0 rating
+
         dataset = UserItemRatingDataset(
             user_tensor=torch.LongTensor(users),
             item_tensor=torch.LongTensor(items),
@@ -119,6 +130,11 @@ class MLPModel(PyTorchModel):
     def train_single_batch(self, users, items, ratings):
         if self.cuda is True:
             users, items, ratings = users.cuda(), items.cuda(), ratings.cuda()
+        if self.optimizer is None:
+            raise RuntimeError(
+                "Optimizer is not initialized. Call fit() before training."
+            )
+
         self.optimizer.zero_grad()
         ratings_pred = self(users, items)
         loss = self.criterion(ratings_pred.view(-1), ratings)

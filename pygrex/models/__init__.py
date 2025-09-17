@@ -7,6 +7,7 @@ from .mlp_model import MLPModel
 from .emf_model import PyTorchModel
 from .knn_basic_model import KNNBasic
 from .svd_model import SVD
+from .recommender_model import RecommenderModel
 
 __all__ = [
     "ALS",
@@ -18,4 +19,5 @@ __all__ = [
     "ExplAutoencoderTorch",
     "KNNBasic",
     "SVD",
+    "RecommenderModel",
 ]

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Union
+from typing import Union
 
 from pygrex.data_reader.data_reader import DataReader
 
@@ -11,7 +11,9 @@ class RecommenderModel(ABC):
     """
 
     @abstractmethod
-    def predict(self, user_id: Union[str, int], item_id: Union[str, int]):
+    def predict(
+        self, user_id: Union[str, int], item_id: Union[str, int]
+    ) -> Union[float, list]:
         """
         Make predictions for a specific user on a list of items.
 
@@ -25,7 +27,7 @@ class RecommenderModel(ABC):
         pass
 
     @abstractmethod
-    def fit(self, dataset: DataReader):
+    def fit(self, data: DataReader):
         """
         Train the model on data.
         The specific parameters depend on the model implementation.
