@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import Optional
 
 from .generic_recommender import GenericRecommender
 
@@ -27,16 +28,29 @@ class Recommender(GenericRecommender):
 
         return self.rank_prediction(user_id, target_item_id, predictions)
 
-    def recommend_user(self, user_id: int = None, user_ratings: pd.DataFrame = None):
+    def recommend_user(
+        self, user_id: Optional[int] = None, user_ratings: Optional[pd.DataFrame] = None
+    ):
         """
         Get recommendations for a user.
         :param user_id: int, a user Id
         :param user_ratings: list, interactions on the user
         :return: dataframe [userId, itemId, rank], recommendations ranking for the specified userId.
         """
+        if user_ratings is None:
+            if user_id is None:
+                raise ValueError("Either 'user_id' or 'user_ratings' must be provided.")
+            user_ratings = self.get_rated(user_id=user_id)
 
         if user_ratings is None:
-            user_ratings = self.get_rated(user_id=user_id)
+            return pd.DataFrame(
+                columns=["userId", "itemId", "rank"]
+            )  # Return empty recommendations
+
+        if user_id is None:
+            raise ValueError(
+                "Could not determine user_id from the provided user_ratings."
+            )
 
         unrated_item_id = self.get_unrated(user_ratings["itemId"])
 
