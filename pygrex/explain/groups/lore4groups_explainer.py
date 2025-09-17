@@ -25,7 +25,7 @@ class LORE4GroupsExplainer:
         item_profiles: Dict[str, Set[str]],
         item_label_matrix: pd.DataFrame,
         config: Dict,
-        genre_profiles: Dict[str, Set[str]] = None,  # NEW: Genre information
+        genre_profiles: Optional[Dict[str, Set[str]]] = None,
     ):
         self.item_profiles = {str(k): v for k, v in item_profiles.items()}
         self.item_label_matrix = item_label_matrix
@@ -42,13 +42,6 @@ class LORE4GroupsExplainer:
         # Add 'like' back for target variable access (but not as feature)
         if "like" in all_columns:
             self.all_labels.append("like")
-
-        # print(f"Initialized with {len(self.all_labels)} labels")
-        # print(f"'like' in all_labels: {'like' in self.all_labels}")
-        # print(
-        #     f"Feature count (excluding 'like'): {len([l for l in self.all_labels if l != 'like'])}"
-        # )
-        # print(f"Genre profiles loaded: {len(self.genre_profiles)} items")
 
     def _enhanced_jaccard_similarity(self, item1_id: ItemId, item2_id: ItemId) -> float:
         """Enhanced Jaccard similarity that considers both tags and genres"""
@@ -92,10 +85,6 @@ class LORE4GroupsExplainer:
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """Enhanced version that returns both DataFrame and metadata for visualization"""
 
-        # print(
-        #     f"\n=== ENHANCED _get_similar_examples for user {user_id_consecutive}, item {target_item_id} ==="
-        # )
-
         # 1. Find all similar items using enhanced similarity
         similarities = [
             (seen_id, self._enhanced_jaccard_similarity(target_item_id, seen_id))
@@ -111,12 +100,7 @@ class LORE4GroupsExplainer:
         }
 
         if not top_similar_items_str:
-            # print(f"No similar items found for threshold {sim_th}")
             return pd.DataFrame(), {}
-
-        # print(
-        #     f"Selected {len(top_similar_items_str)} similar items (enhanced similarity)"
-        # )
 
         # 2. Build the local dataset
         top_similar_items_int = [int(i) for i in top_similar_items_str]
@@ -131,8 +115,6 @@ class LORE4GroupsExplainer:
         items_to_predict = [
             item for item in top_similar_items_int if item not in rated_items
         ]
-
-        # print(f"Need predictions for {len(items_to_predict)} items")
 
         # Add predictions for unrated items
         if model and data_reader and items_to_predict:
@@ -159,13 +141,11 @@ class LORE4GroupsExplainer:
                     pred_df = pd.DataFrame(predicted_ratings)
                     local_df = pd.concat([local_df, pred_df], ignore_index=True)
 
-            except Exception as e:
-                # print(f"ERROR in prediction: {e}")
+            except Exception:
                 traceback.print_exc()
 
         # Check minimum samples requirement
         if len(local_df) < 2:
-            # print(f"Insufficient samples ({len(local_df)}) for tree training")
             return pd.DataFrame(), {}
 
         # 3. Apply thresholding with fallbacks
@@ -195,13 +175,11 @@ class LORE4GroupsExplainer:
         # Check for severe imbalance (>90% one class)
         min_class_ratio = like_counts.min() / len(local_df)
         if min_class_ratio < 0.1:
-            # print(f"Severe class imbalance: {like_counts.to_dict()}")
             if like_counts.min() < 2:
                 return pd.DataFrame(), {}
 
         # 4. Construct the enhanced feature matrix (including genres)
         feature_labels = [label for label in self.all_labels if label != "like"]
-        # print(f"Using {len(feature_labels)} feature labels (excluding 'like')")
 
         examples = []
         genre_features_used = set()
@@ -244,11 +222,7 @@ class LORE4GroupsExplainer:
 
         # Final validation
         if final_df["like"].nunique() < 2:
-            # print("FATAL: Still no class diversity after processing")
             return pd.DataFrame(), {}
-
-        # print(f"Enhanced dataset: {len(final_df)} samples, {final_df['like'].value_counts().to_dict()}")
-        # print(f"Genre features added: {len(genre_features_used)}")
 
         # Prepare metadata for visualization
         metadata = {
@@ -278,8 +252,10 @@ class LORE4GroupsExplainer:
 
         # 1. Get the sequence of nodes the item travels through
         node_indicator = clf.decision_path(x_item)
-        node_index = node_indicator.indices[
-            node_indicator.indptr[0] : node_indicator.indptr[1]
+        node_index = node_indicator.indices[  # type: ignore
+            node_indicator.indptr[0] : node_indicator.indptr[  # type: ignore
+                1
+            ]
         ]
 
         rules = []
@@ -292,12 +268,12 @@ class LORE4GroupsExplainer:
             child_node_id = node_index[i + 1]
 
             # Ensure this is not a leaf node
-            if tree.feature[node_id] != _tree.TREE_UNDEFINED:
-                feature_name = feature_labels[tree.feature[node_id]]
-                threshold = tree.threshold[node_id]
+            if tree.feature[node_id] != _tree.TREE_UNDEFINED:  # type: ignore
+                feature_name = feature_labels[tree.feature[node_id]]  # type: ignore
+                threshold = tree.threshold[node_id]  # type: ignore
 
                 # 3. Determine if the path went left or right to form the rule
-                if child_node_id == tree.children_left[node_id]:
+                if child_node_id == tree.children_left[node_id]:  # type: ignore
                     # Path went left (True condition for <= threshold)
                     rule = f"{feature_name} <= {threshold:.2f}"
                 else:
@@ -307,7 +283,7 @@ class LORE4GroupsExplainer:
                 # Use the same enhanced formatting as before for consistency
                 if feature_name.startswith("genre_"):
                     genre_name = feature_name.replace("genre_", "").title()
-                    if child_node_id == tree.children_left[node_id]:
+                    if child_node_id == tree.children_left[node_id]:  # type: ignore
                         rules.append(f"Does NOT have genre: `{genre_name}`")
                     else:
                         rules.append(f"Has genre: `{genre_name}`")
@@ -335,10 +311,8 @@ class LORE4GroupsExplainer:
             return None, {}
 
         like_counts = df_examples["like"].value_counts()
-        # print(f"Training enhanced tree with distribution: {like_counts.to_dict()}")
 
         if len(like_counts) < 2 or like_counts.min() < 2:
-            # print("Insufficient class diversity for training")
             return None, {}
 
         feature_labels = metadata.get("feature_labels", [])
@@ -348,7 +322,6 @@ class LORE4GroupsExplainer:
         # Verify feature matrix has variance
         feature_variances = X.var()
         if (feature_variances == 0).all():
-            # print("ERROR: All features have zero variance!")
             return None, {}
 
         clf = DecisionTreeClassifier(
@@ -371,9 +344,6 @@ class LORE4GroupsExplainer:
                 (f, imp) for f, imp in important_features if f.startswith("genre_")
             ]
 
-            # print(f"Important features: {important_features[:5]}")
-            # print(f"Important genre features: {genre_important_features}")
-
             # Add classifier and feature info to metadata
             metadata.update(
                 {
@@ -388,8 +358,7 @@ class LORE4GroupsExplainer:
 
             return clf, metadata
 
-        except Exception as e:
-            # print(f"ERROR training enhanced tree: {e}")
+        except Exception as _:
             return None, {}
 
     def _get_enhanced_explanation_path(
@@ -403,14 +372,16 @@ class LORE4GroupsExplainer:
         if 1 not in clf.classes_:
             return None
 
-        leaf_id = clf.apply(x_item)[0]
+        leaf_id = clf.apply(x_item)[0]  # type: ignore
         class_index = np.where(clf.classes_ == 1)[0]
-        if not class_index.size or clf.tree_.value[leaf_id][0][class_index[0]] == 0:
+        if not class_index.size or clf.tree_.value[leaf_id][0][class_index[0]] == 0:  # type: ignore
             return None
 
         node_indicator = clf.decision_path(x_item)
-        node_index = node_indicator.indices[
-            node_indicator.indptr[0] : node_indicator.indptr[1]
+        node_index = node_indicator.indices[  # type: ignore
+            node_indicator.indptr[0] : node_indicator.indptr[  # type: ignore
+                1
+            ]
         ]
 
         rules = []
@@ -420,20 +391,20 @@ class LORE4GroupsExplainer:
             node_id = node_index[i]
             next_node_id = node_index[i + 1]
 
-            if clf.tree_.feature[node_id] != _tree.TREE_UNDEFINED:
-                feature_name = feature_labels[clf.tree_.feature[node_id]]
-                threshold = clf.tree_.threshold[node_id]
+            if clf.tree_.feature[node_id] != _tree.TREE_UNDEFINED:  # type: ignore
+                feature_name = feature_labels[clf.tree_.feature[node_id]]  # type: ignore
+                threshold = clf.tree_.threshold[node_id]  # type: ignore
 
                 # Enhanced rule formatting based on feature type
                 if feature_name.startswith("genre_"):
                     genre_name = feature_name.replace("genre_", "").title()
-                    if next_node_id == clf.tree_.children_left[node_id]:
+                    if next_node_id == clf.tree_.children_left[node_id]:  # type: ignore
                         rules.append(f"Does NOT have genre: `{genre_name}`")
                     else:
                         rules.append(f"Has genre: `{genre_name}`")
                 else:
                     # Regular tag features
-                    if next_node_id == clf.tree_.children_left[node_id]:
+                    if next_node_id == clf.tree_.children_left[node_id]:  # type: ignore
                         rules.append(f"{feature_name} <= {threshold}")
                     else:
                         rules.append(f"{feature_name} > {threshold}")
@@ -474,12 +445,9 @@ class LORE4GroupsExplainer:
 
             # Select only the features used in training
             x_item = enhanced_item_data[feature_labels]
-            # print(f"Enhanced item representation: {len(feature_labels)} features")
 
-        except KeyError as e:
-            # print(f"KeyError selecting enhanced features: {e}")
+        except KeyError as _:
             return None
-
         # Get enhanced factual rule
         # factual_rule = self._get_enhanced_explanation_path(clf, x_item, metadata)
         factual_rule = self._get_factual_path_for_item(clf, x_item, metadata)
@@ -500,21 +468,20 @@ class LORE4GroupsExplainer:
         """Original counterfactual path method (kept for compatibility)"""
         tree = clf.tree_
         paths = []
-        feature_labels = [label for label in self.all_labels if label != "like"]
 
         def find_paths(node_id, current_path):
-            if tree.feature[node_id] == _tree.TREE_UNDEFINED:
+            if tree.feature[node_id] == _tree.TREE_UNDEFINED:  # type: ignore
                 class_index = np.where(clf.classes_ == 0)[0]
                 if class_index.size and tree.value[node_id][0][class_index[0]] > 0:
                     paths.append(list(current_path))
                 return
-            feature_idx = tree.feature[node_id]
-            threshold = tree.threshold[node_id]
+            feature_idx = tree.feature[node_id]  # type: ignore
+            threshold = tree.threshold[node_id]  # type: ignore
             current_path.append((feature_idx, "<=", threshold))
-            find_paths(tree.children_left[node_id], current_path)
+            find_paths(tree.children_left[node_id], current_path)  # type: ignore
             current_path.pop()
             current_path.append((feature_idx, ">", threshold))
-            find_paths(tree.children_right[node_id], current_path)
+            find_paths(tree.children_right[node_id], current_path)  # type: ignore
             current_path.pop()
 
         find_paths(0, [])
@@ -664,6 +631,10 @@ class LORE4GroupsExplainer:
         data_reader=None,
     ) -> Dict[str, Any]:
         """Enhanced explanation finding with tree storage for visualization"""
+        if data_reader is None:
+            raise ValueError(
+                "A 'data_reader' object must be provided to find explanations."
+            )
 
         detailed_explanations = {}
         explainable_count = 0
@@ -699,17 +670,7 @@ class LORE4GroupsExplainer:
                     )
 
                     if explanation:
-                        # print(
-                        #     f"\n ✅ ENHANCED EXPLANATION for USER {user_id} & ITEM {item_id}!"
-                        # )
                         r, phi = explanation
-                        # print(f"  - Enhanced Factual Rule (r): {r}")
-                        # print(
-                        #     f"  - Enhanced Counterfactuals (phi): {phi[0] if phi else 'None'}"
-                        # )
-                        # print(
-                        #     f"  - Genre features used: {len(metadata.get('genre_features', []))}"
-                        # )
                         all_individual_rules[user_id] = r
                         all_counterfactuals[user_id] = phi
 
@@ -721,11 +682,9 @@ class LORE4GroupsExplainer:
                             stored_metadata[user_id] = metadata
 
             total_members_in_group = len(members)
-            # print(f"Enhanced factual rules before aggregation: {all_factuals}")
             factual_set = self._aggregate_factual_rules(
                 all_individual_rules, total_members_in_group
             )
-            # print(f"After enhanced cleaning: {factual_set}")
 
             if representative_decision_path and factual_set:
                 explainable_count += 1

@@ -27,7 +27,7 @@ class ALSExplainer(Explainer):
         temp = np.matmul(y_t, c_u)
         temp = np.matmul(temp, self.model.item_embedding())
         temp = temp + np.diag([self.model.reg_term] * self.model.latent_dim)
-        
+
         if len(self.get_user_items(user_id)) > 1:
             weight_mtr = np.linalg.inv(temp)
         else:
@@ -39,8 +39,13 @@ class ALSExplainer(Explainer):
 
         sim_to_rec_id = sim_to_rec_id[self.get_user_items(user_id)]
 
-        contribution = {"item": self.get_user_items(user_id), "contribution": sim_to_rec_id}
+        contribution = {
+            "item": self.get_user_items(user_id),
+            "contribution": sim_to_rec_id,
+        }
         contribution = pd.DataFrame(contribution)
         contribution = contribution.sort_values(by=["contribution"], ascending=False)
-        return {"item": contribution.item[:self.number_of_contributions],
-                "contribution": contribution.contribution[:self.number_of_contributions]}
+        return {
+            "item": contribution.item[: self.number_of_contributions],
+            "contribution": contribution.contribution[: self.number_of_contributions],
+        }

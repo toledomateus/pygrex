@@ -1,7 +1,6 @@
 import itertools
-from typing import Dict, List, Union
+from typing import Dict, List, Sequence, Union
 
-from pygrex.config import cfg
 from pygrex.data_reader import DataReader, GroupInteractionHandler
 from pygrex.models import RecommenderModel
 from pygrex.recommender import GroupRecommender
@@ -23,7 +22,7 @@ class SlidingWindowExplainer:
 
     def __init__(
         self,
-        cfg: cfg,
+        config,
         data: DataReader,
         group_handler: GroupInteractionHandler,
         members: List[Union[str, int]],
@@ -36,7 +35,7 @@ class SlidingWindowExplainer:
         Initialize the SlidingWindowExplainer.
 
         Args:
-            cfg: Configuration object with model parameters
+            config: Configuration object with model parameters
             data: DataReader object containing the dataset
             group_handler: Object that handles group data modifications
             members: List of user IDs in the group
@@ -45,13 +44,13 @@ class SlidingWindowExplainer:
             aggregation_strategy: Strategy to aggregate individual recommendations,
             window_size: Size of the sliding window
         """
-        self.cfg = cfg
+        self.cfg = config
         self.data = data
         self.group_handler = group_handler
         self.members = members
         self.target_item = target_item
         self.model = model
-        self.aggregation_strategy = (aggregation_strategy,)
+        self.aggregation_strategy = aggregation_strategy
         self.window_size = window_size
 
         # Results tracking
@@ -149,7 +148,7 @@ class SlidingWindowExplainer:
 
     def _get_recommendations_after_removal(
         self, item_ids: List[Union[str, int]], top_n: int = 10
-    ) -> List[Union[str, int]]:
+    ) -> Sequence[Union[str, int]]:
         """
         Get group recommendations after removing specified items from interaction history.
 
@@ -180,9 +179,12 @@ class SlidingWindowExplainer:
             data_retrained,
             aggregation_strategy=self.aggregation_strategy,
         )
+        recommendations = group_recommender.get_group_recommendations(top_n)
 
-        # Return new recommendations
-        return group_recommender.get_group_recommendations(top_n)
+        if not isinstance(recommendations, list):
+            return []
+
+        return recommendations
 
     def _create_data_reader_and_prepare(self, changed_data):
         """
@@ -348,8 +350,15 @@ class SlidingWindowExplainer:
         Returns:
             list: Average intensity for each item in the explanation.
         """
+        internal_group_ids = []
         # Convert user IDs to internal representation
-        internal_group_ids = [int(data.get_new_user_id(user_id)) for user_id in members]
+        for user_id in members:
+            new_user_id = data.get_new_user_id(user_id)
+            if isinstance(new_user_id, list):
+                if new_user_id:  # Check that the list is not empty
+                    internal_group_ids.append(int(new_user_id[0]))
+            else:
+                internal_group_ids.append(int(new_user_id))
 
         group_size = len(members)
         item_intensities = []

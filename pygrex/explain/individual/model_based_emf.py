@@ -1,5 +1,3 @@
-from tqdm.auto import tqdm
-
 from .explainer import Explainer
 
 
@@ -21,7 +19,7 @@ class EMFExplainer(Explainer):
             ratings_on_item.userId.isin(similar_users)
         ]
 
-        explanation_df = similar_users_ratings_on_item.groupby(by='rating').count()
+        explanation_df = similar_users_ratings_on_item.groupby(by="rating").count()
         explanation = {}
 
         for index, row in explanation_df.iterrows():

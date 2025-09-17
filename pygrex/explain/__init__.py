@@ -4,7 +4,7 @@ from .individual.post_hoc_association_rules import ARPostHocExplainer
 from .individual.post_hoc_knn import KNNPostHocExplainer
 from .groups.rule_based_group_rec_explainer import RuleBasedGroupRecExplainer
 from .groups.sliding_window_explainer import SlidingWindowExplainer
-from .groups.lore4groups import LORE4GroupsExplainer
+from .groups.lore4groups_explainer import LORE4GroupsExplainer
 
 
 __all__ = [

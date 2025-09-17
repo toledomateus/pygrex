@@ -1,6 +1,6 @@
 from .rule_based_group_rec_explainer import RuleBasedGroupRecExplainer
 from .sliding_window_explainer import SlidingWindowExplainer
-from .lore4groups import LORE4GroupsExplainer
+from .lore4groups_explainer import LORE4GroupsExplainer
 
 
 __all__ = [
