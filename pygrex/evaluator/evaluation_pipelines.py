@@ -6,7 +6,7 @@ from pygrex.data_reader.data_reader import DataReader
 from pygrex.evaluator import Splitter, ModelEvaluator
 
 
-def run_leave_one_out_evaluation_improved(
+def run_leave_one_out_evaluation(
     data_reader: DataReader, model, top_n: int = 10
 ) -> Dict:
     """
