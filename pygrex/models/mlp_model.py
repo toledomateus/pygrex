@@ -52,7 +52,7 @@ class MLPModel(PyTorchModel):
             network=self,
             weight_decay=self.weight_decay,
             learning_rate=self.learning_rate,
-            optimizer=self.optimizer_name,
+            optimizer_name=self.optimizer_name,
         )
         if not isinstance(optimizer, Optimizer):
             raise TypeError(f"Expected an Optimizer, but got {type(optimizer)}")

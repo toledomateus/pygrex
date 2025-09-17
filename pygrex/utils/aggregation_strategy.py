@@ -87,8 +87,6 @@ class ScoreAggregator:
                 result[item] = self._most_pleasure(evaluations, item)
             elif strategy == AggregationStrategy.MOST_RESPECTED_PERSON:
                 result[item] = self._most_respected_person(evaluations, item)
-            elif strategy == AggregationStrategy.AVG_PREFERENCES:
-                result[item] = self._avg_preferences(evaluations, item)
             elif strategy == AggregationStrategy.ADDITIVE_UTILITARIAN:
                 result[item] = self._additive_utilitarian(evaluations, item)
             elif strategy == AggregationStrategy.MULTIPLICATIVE:

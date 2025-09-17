@@ -588,10 +588,10 @@ elif model_option == "KNN":
 
 elif model_option == "SVD":
     st.subheader("SVD Parameters")
-    N_FACTORS = 64  # Sweet spot for MovieLens 1M
-    N_EPOCHS = 30  # Slightly more epochs with good regularization
-    LEARNING_RATE = 0.005  # Slightly lower for stability
-    REGULARIZATION = 0.08  # Slightly reduced for better fit
+    N_FACTORS = 64
+    N_EPOCHS = 30
+    LEARNING_RATE = 0.005
+    REGULARIZATION = 0.08
     RANDOM_STATE = 42
     # First Row
     col1_r1, col2_r1, col3_r1 = st.columns(3)
@@ -705,17 +705,51 @@ if st.button("Train Model", type="primary"):
             elif model_option == "BPR":
                 model = BPR(**model_params)
             elif model_option == "Autoencoder":
-                model = ExplAutoencoderTorch(**model_params)
+                autoencoder_params = {
+                    k: v
+                    for k, v in model_params.items()
+                    if k not in ["num_users", "num_items"]
+                }
+                model = ExplAutoencoderTorch(**autoencoder_params)
             elif model_option == "EMF":
-                model = EMFModel(**model_params)
+                emf_params = {
+                    k: v
+                    for k, v in model_params.items()
+                    if k not in ["num_users", "num_items"]
+                }
+                model = EMFModel(**emf_params)
             elif model_option == "GMF":
-                model = GMFModel(**model_params)
+                gmf_params = {
+                    k: v
+                    for k, v in model_params.items()
+                    if k not in ["num_users", "num_items"]
+                }
+                model = GMFModel(**gmf_params)
             elif model_option == "MLP":
-                model = MLPModel(**model_params)
+                mlp_params = {
+                    k: v
+                    for k, v in model_params.items()
+                    if k not in ["num_users", "num_items"]
+                }
+                model = MLPModel(**mlp_params)
             elif model_option == "KNN":
-                model = KNNBasic(**model_params)
+                if "k_neighbors" in model_params:
+                    model_params["k"] = model_params.pop("k_neighbors")
+                knn_params = {
+                    k: v
+                    for k, v in model_params.items()
+                    if k not in ["num_users", "num_items"]
+                }
+                model = KNNBasic(**knn_params)
             elif model_option == "SVD":
-                model = SVD(**model_params)
+                if "learning_rater" in model_params:
+                    model_params["lr"] = model_params.pop("learning_rater")
+                svd_params = {
+                    k: v
+                    for k, v in model_params.items()
+                    if k not in ["num_users", "num_items"]
+                }
+                model = SVD(**svd_params)
             if model:
                 start_time = time.time()
                 # 2. Fit the model using the processed dataset
@@ -787,17 +821,51 @@ if "trained_model" in st.session_state:
                     elif model_option == "BPR":
                         eval_model = BPR(**model_params)
                     elif model_option == "Autoencoder":
-                        eval_model = ExplAutoencoderTorch(**model_params)
+                        autoencoder_params = {
+                            k: v
+                            for k, v in model_params.items()
+                            if k not in ["num_users", "num_items"]
+                        }
+                        eval_model = ExplAutoencoderTorch(**autoencoder_params)
                     elif model_option == "EMF":
-                        eval_model = EMFModel(**model_params)
+                        emf_params = {
+                            k: v
+                            for k, v in model_params.items()
+                            if k not in ["num_users", "num_items"]
+                        }
+                        eval_model = EMFModel(**emf_params)
                     elif model_option == "GMF":
-                        eval_model = GMFModel(**model_params)
+                        gmf_params = {
+                            k: v
+                            for k, v in model_params.items()
+                            if k not in ["num_users", "num_items"]
+                        }
+                        eval_model = GMFModel(**gmf_params)
                     elif model_option == "MLP":
-                        eval_model = MLPModel(**model_params)
+                        mlp_params = {
+                            k: v
+                            for k, v in model_params.items()
+                            if k not in ["num_users", "num_items"]
+                        }
+                        eval_model = MLPModel(**mlp_params)
                     elif model_option == "KNN":
-                        eval_model = KNNBasic(**model_params)
+                        if "k_neighbors" in model_params:
+                            model_params["k"] = model_params.pop("k_neighbors")
+                        knn_params = {
+                            k: v
+                            for k, v in model_params.items()
+                            if k not in ["num_users", "num_items"]
+                        }
+                        eval_model = KNNBasic(**knn_params)
                     elif model_option == "SVD":
-                        eval_model = SVD(**model_params)
+                        if "learning_rater" in model_params:
+                            model_params["lr"] = model_params.pop("learning_rater")
+                        svd_params = {
+                            k: v
+                            for k, v in model_params.items()
+                            if k not in ["num_users", "num_items"]
+                        }
+                        eval_model = SVD(**svd_params)
                     else:
                         st.error(f"Evaluation not implemented for {model_name}")
                         st.stop()

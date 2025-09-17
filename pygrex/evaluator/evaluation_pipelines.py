@@ -9,10 +9,6 @@ from pygrex.evaluator import Splitter, ModelEvaluator
 def run_leave_one_out_evaluation(
     data_reader: DataReader, model, top_n: int = 10
 ) -> Dict:
-    """
-    Improved leave-one-out evaluation using the existing Evaluator class.
-    Much more efficient and properly implemented.
-    """
     print("Starting leave-one-out evaluation...")
     start_time = time.time()
 
@@ -21,6 +17,17 @@ def run_leave_one_out_evaluation(
         data_reader, n=1
     )  # n=1 for true leave-one-out
     print(f"Split completed: {len(test_df)} test interactions")
+
+    train_users = set(train_dr.dataset["userId"].unique())
+    train_items = set(train_dr.dataset["itemId"].unique())
+
+    original_test_len = len(test_df)
+    test_df = test_df[
+        test_df["userId"].isin(train_users) & test_df["itemId"].isin(train_items)
+    ]
+    print(
+        f"Filtered test set: {len(test_df)} interactions remaining from {original_test_len}"
+    )
 
     # 2. Train model on training data
     print("Training model on reduced dataset...")
@@ -199,7 +206,6 @@ def run_evaluation_with_proper_split(
 ) -> Dict:
     """
     Alternative evaluation using a proper train/test split instead of leave-one-out.
-    This is often more practical and much faster.
     """
     print(f"Starting evaluation with {test_size * 100}% test split...")
     start_time = time.time()
@@ -207,6 +213,18 @@ def run_evaluation_with_proper_split(
     # 1. Split data into train/test
     train_dr, test_df = Splitter.split_leave_n_out(data_reader, frac=test_size)
     print(f"Split completed: {len(test_df)} test interactions")
+
+    # 2. Filter test set to ensure all users/items exist in the training set
+    train_users = set(train_dr.dataset["userId"].unique())
+    train_items = set(train_dr.dataset["itemId"].unique())
+
+    original_test_len = len(test_df)
+    test_df = test_df[
+        test_df["userId"].isin(train_users) & test_df["itemId"].isin(train_items)
+    ]
+    print(
+        f"Filtered test set: {len(test_df)} interactions remaining from {original_test_len}"
+    )
 
     # 2. Train model
     print("Training model...")

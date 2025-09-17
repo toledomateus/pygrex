@@ -3,7 +3,7 @@ import scipy
 from typing import Union, Protocol, runtime_checkable
 
 from implicit.recommender_base import RecommenderBase
-from pygrex.models import RecommenderModel
+from .recommender_model import RecommenderModel
 from pygrex.data_reader import DataReader
 
 
@@ -16,22 +16,43 @@ class FittableImplicitModel(Protocol):
 
 
 class MFImplicitModel(RecommenderModel):
-    def __init__(self, latent_dim, reg_term, learning_rate, epochs):
+    def __init__(
+        self,
+        latent_dim,
+        reg_term,
+        learning_rate,
+        epochs,
+        num_users=None,
+        num_items=None,
+    ):
         self.latent_dim = latent_dim
         self.reg_term = reg_term
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.model: Union[RecommenderBase, FittableImplicitModel, None] = None
+        self.total_users = num_users
+        self.total_items = num_items
 
     def fit(self, data: DataReader) -> None:
         if self.model is None:
             raise RuntimeError(
                 "The model has not been initialized. Please use a specific subclass like ALS or BPR."
             )
+        num_user_for_shape = (
+            self.total_users
+            if self.total_users is not None
+            else data.dataset["userId"].max() + 1
+        )
+        num_item_for_shape = (
+            self.total_items
+            if self.total_items is not None
+            else data.dataset["itemId"].max() + 1
+        )
+
         item_user_data = self.rearrange_dataset(
             ds=data.dataset,
-            num_user=data.num_user,
-            num_item=data.num_item,
+            num_user=num_user_for_shape,
+            num_item=num_item_for_shape,
         ).T.tocsr()
 
         self.model.fit(item_user_data)

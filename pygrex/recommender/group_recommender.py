@@ -173,9 +173,13 @@ class GroupRecommender:
         Returns:
             np.ndarray: A list of item IDs that have not been interacted with by any member of the group.
         """
+
+        consecutive_member_ids = [data.get_new_user_id(int(m)) for m in members]
+        consecutive_member_ids = [m for m in consecutive_member_ids if m is not None]
+
         # Get all unique item IDs interacted with by users in the group
         interacted_item_ids = data.dataset.loc[
-            data.dataset.userId.isin(members), "itemId"
+            data.dataset.userId.isin(consecutive_member_ids), "itemId"
         ].unique()
 
         # Use numpy set difference to get non-interacted item IDs
@@ -204,28 +208,38 @@ class GroupRecommender:
         """
         member = int(member)
         new_member_id = data.get_new_user_id(member)
-        raw_predictions = []
-        # Generate predictions for each item in the pool
-        for item in item_pool:
-            item = int(item)
-            raw_predictions.append(model.predict(new_member_id, item))  # type: ignore
+
+        if new_member_id is None:
+            return {}  # Return empty predictions for this user
+
+        raw_predictions = model.predict(new_member_id, item_pool)  # type: ignore
+        if not isinstance(raw_predictions, (list, np.ndarray)):
+            raise TypeError(
+                f"Model's predict function returned an unexpected type: {type(raw_predictions)}"
+            )
+
+        # raw_predictions = []
+        # # Generate predictions for each item in the pool
+        # for item in item_pool:
+        #     item = int(item)
+        #     raw_predictions.append(model.predict(new_member_id, item))  # type: ignore
 
         # Ensure raw_predictions is a numpy array
         raw_predictions = np.array(raw_predictions)
 
-        # Flatten the predictions if it's a 2D array (single user, multiple items)
-        if raw_predictions.ndim == 2 and raw_predictions.shape[0] == 1:
-            raw_predictions = raw_predictions.flatten()
+        # # Flatten the predictions if it's a 2D array (single user, multiple items)
+        # if raw_predictions.ndim == 2 and raw_predictions.shape[0] == 1:
+        #     raw_predictions = raw_predictions.flatten()
 
-        # Check if the length of raw_predictions matches item_pool
-        if len(raw_predictions) != len(item_pool):
-            raise ValueError(
-                "Mismatch between predictions and item IDs. Check the model's predict function."
-            )
+        # # Check if the length of raw_predictions matches item_pool
+        # if len(raw_predictions) != len(item_pool):
+        #     raise ValueError(
+        #         "Mismatch between predictions and item IDs. Check the model's predict function."
+        #     )
 
         # Apply scaling to normalize predictions to 1-5 range
         scaled_linear = Scale.linear(
-            raw_predictions,
+            np.array(raw_predictions),
             target_min=1,
             target_max=5,
         )
@@ -233,10 +247,9 @@ class GroupRecommender:
         predictions = {}
         for item, scaled_pred in zip(item_pool, scaled_linear):
             # Ensure item_id is treated as an integer
-            if isinstance(item, np.integer):
-                item = int(item)
-            item_original_id = data.get_original_item_id(item)  # type: ignore
-            predictions[int(item_original_id)] = scaled_pred  # type: ignore
+            item_original_id = data.get_original_item_id(int(item))
+            if item_original_id is not None:
+                predictions[int(item_original_id)] = scaled_pred  # type: ignore
 
         # Sort the predictions in descending order of scores
         sorted_predictions = dict(

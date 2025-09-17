@@ -11,7 +11,7 @@ from typing import Optional, Union, List
 
 from pygrex.utils.torch_utils import use_cuda, use_optimizer
 from pygrex.data_reader import UserItemDict, DataReader
-from pygrex.models import RecommenderModel
+from .recommender_model import RecommenderModel
 
 
 class ExplAutoencoderTorch(RecommenderModel, nn.Module):
@@ -73,7 +73,7 @@ class ExplAutoencoderTorch(RecommenderModel, nn.Module):
             network=self,
             weight_decay=self.weight_decay,
             learning_rate=self.learning_rate,
-            optimizer=self.optimizer_name,
+            optimizer_name=self.optimizer_name,
         )
 
         assert isinstance(optimizer, torch.optim.Optimizer)
@@ -199,4 +199,8 @@ class ExplAutoencoderTorch(RecommenderModel, nn.Module):
             if self.use_gpu:
                 rating = rating.cuda()
             pred = self.forward(rating).cpu()
-            return pred[:, item_id].tolist()
+            predictions = pred[:, item_id].tolist()
+            # Flatten the nested list if it contains only one user's predictions
+            if len(predictions) == 1:
+                return predictions[0]
+            return predictions
