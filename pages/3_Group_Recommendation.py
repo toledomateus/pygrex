@@ -1,9 +1,8 @@
-from pathlib import Path
 import streamlit as st
 import pandas as pd
 
-from pygrex.recommender.group_recommender import GroupRecommender
-from pygrex.utils.aggregation_strategy import AggregationStrategy
+from pygrex.recommender import GroupRecommender
+from pygrex.utils import AggregationStrategy
 
 st.set_page_config(page_title="Group Recommendation", page_icon="🎯", layout="wide")
 st.title("🎯 Group Recommendation")

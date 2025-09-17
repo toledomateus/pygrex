@@ -12,8 +12,8 @@ from pygrex.models import (
     SVD,
     KNNBasic,
 )
-from pygrex.evaluator.evaluation_utils import (
-    run_leave_one_out_evaluation_improved,
+from pygrex.evaluator import (
+    run_leave_one_out_evaluation,
     run_evaluation_with_proper_split,
 )
 
@@ -36,6 +36,7 @@ model_option = st.selectbox(
 
 #  Hyperparameter Configuration
 st.header("2. Configure Hyperparameters")
+model_params = {}
 
 if model_option == "ALS":
     st.subheader("ALS (Alternating Least Squares) Parameters")
@@ -70,6 +71,12 @@ if model_option == "ALS":
             step=5,
             help="The number of ALS iterations.",
         )
+    model_params = {
+        "latent_dim": latent_dim,
+        "reg_term": reg_term,
+        "epochs": epochs,
+    }
+
 
 elif model_option == "BPR":
     st.subheader("BPR (Bayesian Personalised Ranking) Parameters")
@@ -118,6 +125,12 @@ elif model_option == "BPR":
             format="%.2f",
             help="The step size at each iteration while moving toward a minimum of the loss function.",
         )
+    model_params = {
+        "latent_dim": latent_dim,
+        "reg_term": reg_term,
+        "epochs": epochs,
+        "learning_rate": learning_rate,
+    }
 
 elif model_option == "Autoencoder":
     st.subheader("Autoencoder Parameters")
@@ -213,6 +226,17 @@ elif model_option == "Autoencoder":
             value=True,
             help="Check to enable model explanations or interpretability features.",
         )
+    model_params = {
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "hidden_layer_features": hidden_layer_features,
+        "epochs": epochs,
+        "cuda": cuda,
+        "optimizer_name": optimizer_name,
+        "positive_threshold": positive_threshold,
+        "knn": knn,
+        "expl": expl,
+    }
 
 elif model_option == "EMF":
     st.subheader("EMF (Explainable Matrix Factorisation) Parameters")
@@ -298,6 +322,15 @@ elif model_option == "EMF":
             step=1,
             help="The number of nearest neighbors to consider for KNN-based aspects of EMF.",
         )
+    model_params = {
+        "learning_rate": learning_rate,
+        "reg_term": reg_term,
+        "expl_reg_term": expl_reg_term,
+        "latent_dim": latent_dim,
+        "epochs": epochs,
+        "positive_threshold": positive_threshold,
+        "knn": knn,
+    }
 
 elif model_option == "GMF":
     st.subheader("GMF (Generalised Matrix Factorisation) Parameters")
@@ -389,6 +422,16 @@ elif model_option == "GMF":
         )
 
     # col3_r3 is left empty here if no further parameters for GMF
+    model_params = {
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "latent_dim": latent_dim,
+        "epochs": epochs,
+        "num_negative": num_negative,
+        "batch_size": batch_size,
+        "cuda": cuda,
+        "optimizer_name": optimizer_name,
+    }
 
 elif model_option == "MLP":
     st.subheader("MLP (Multi-Layer Perceptron) Parameters")
@@ -480,6 +523,16 @@ elif model_option == "MLP":
         )
 
     # col3_r3 is left empty here if no further parameters for MLP
+    model_params = {
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "latent_dim": latent_dim,
+        "epochs": epochs,
+        "num_negative": num_negative,
+        "batch_size": batch_size,
+        "cuda": cuda,
+        "optimizer_name": optimizer_name,
+    }
 
 elif model_option == "KNN":
     st.subheader("KNN (K-Nearest Neighbors) Parameters")
@@ -526,6 +579,12 @@ elif model_option == "KNN":
         )
 
     # col2_r2 and col3_r2 is left empty here if no further parameters for KNN
+    model_params = {
+        "k_neighbors": k_neighbors,
+        "min_k_neighbors": min_k_neighbors,
+        "similarity_type": similarity_type,
+        "boolean_user_based": boolean_user_based,
+    }
 
 elif model_option == "SVD":
     st.subheader("SVD Parameters")
@@ -617,6 +676,16 @@ elif model_option == "SVD":
             help="The seed for random number generation to ensure reproducibility.",
         )
     # col3_r3 is left empty here if no further parameters for SVD
+    model_params = {
+        "n_factors": n_factors,
+        "n_epochs": n_epochs,
+        "learning_rater": learning_rater,
+        "reg": reg,
+        "init_mean": init_mean,
+        "init_std": init_std,
+        "random_state": random_state,
+        "early_stopping": early_stopping,
+    }
 else:
     st.info(f"Configuration for **{model_option}** is not yet implemented.")
     st.stop()
@@ -629,101 +698,37 @@ if st.button("Train Model", type="primary"):
         try:
             # Retrieve the data_reader object from session state
             data_reader = st.session_state.data_reader
-
+            model = None
             # 1. Instantiate the model with user-defined hyperparameters
-
             if model_option == "ALS":
-                model = ALS(
-                    latent_dim=latent_dim,  # type: ignore
-                    reg_term=reg_term,  # type: ignore
-                    epochs=epochs,
-                )
-            if model_option == "BPR":
-                model = BPR(
-                    latent_dim=latent_dim,  # type: ignore
-                    reg_term=reg_term,  # type: ignore
-                    epochs=epochs,  # type: ignore
-                    learning_rate=learning_rate,  # type: ignore
-                )
-            if model_option == "Autoencoder":
-                model = ExplAutoencoderTorch(
-                    learning_rate=learning_rate,  # type: ignore
-                    weight_decay=weight_decay,  # type: ignore
-                    hidden_layer_features=hidden_layer_features,  # type: ignore
-                    epochs=epochs,
-                    cuda=cuda,  # type: ignore
-                    optimizer_name=optimizer_name,  # type: ignore
-                    positive_threshold=positive_threshold,  # type: ignore
-                    knn=knn,  # type: ignore
-                    expl=expl,  # type: ignore
-                )
-            if model_option == "EMF":
-                model = EMFModel(
-                    learning_rate=learning_rate,  # type: ignore
-                    reg_term=reg_term,  # type: ignore
-                    expl_reg_term=expl_reg_term,  # type: ignore
-                    latent_dim=latent_dim,  # type: ignore
-                    epochs=epochs,
-                    positive_threshold=positive_threshold,  # type: ignore
-                    knn=knn,  # type: ignore
-                )
-            if model_option == "GMF":
-                model = GMFModel(
-                    learning_rate=learning_rate,  # type: ignore
-                    weight_decay=weight_decay,  # type: ignore
-                    latent_dim=latent_dim,  # type: ignore
-                    epochs=epochs,
-                    num_negative=num_negative,  # type: ignore
-                    batch_size=batch_size,  # type: ignore
-                    cuda=cuda,  # type: ignore
-                    optimizer_name=optimizer_name,  # type: ignore
-                )
-            if model_option == "MLP":
-                model = MLPModel(
-                    learning_rate=learning_rate,  # type: ignore
-                    weight_decay=weight_decay,  # type: ignore
-                    latent_dim=latent_dim,  # type: ignore
-                    epochs=epochs,
-                    num_negative=num_negative,  # type: ignore
-                    batch_size=batch_size,  # type: ignore
-                    cuda=cuda,  # type: ignore
-                    optimizer_name=optimizer_name,  # type: ignore
-                )
-            if model_option == "KNN":
-                model = KNNBasic(
-                    k=k_neighbors,  # type: ignore
-                    min_k=min_k_neighbors,  # type: ignore
-                    sim_options={
-                        "name": similarity_type,
-                        "user_based": boolean_user_based,
-                    },  # type: ignore
-                )
-            if model_option == "SVD":
-                model = SVD(
-                    n_factors=n_factors,  # type: ignore
-                    n_epochs=n_epochs,  # type: ignore
-                    lr=learning_rater,  # type: ignore
-                    reg=reg,  # type: ignore
-                    init_mean=init_mean,  # type: ignore
-                    init_std=init_std,  # type: ignore
-                    random_state=random_state,  # type: ignore
-                    early_stopping=early_stopping,  # type: ignore
-                )
+                model = ALS(**model_params)
+            elif model_option == "BPR":
+                model = BPR(**model_params)
+            elif model_option == "Autoencoder":
+                model = ExplAutoencoderTorch(**model_params)
+            elif model_option == "EMF":
+                model = EMFModel(**model_params)
+            elif model_option == "GMF":
+                model = GMFModel(**model_params)
+            elif model_option == "MLP":
+                model = MLPModel(**model_params)
+            elif model_option == "KNN":
+                model = KNNBasic(**model_params)
+            elif model_option == "SVD":
+                model = SVD(**model_params)
+            if model:
+                start_time = time.time()
+                # 2. Fit the model using the processed dataset
+                model.fit(data_reader)
+                end_time = time.time()
+                training_time = end_time - start_time
+                # 3. Store the trained model in session state for the next page
+                st.session_state.trained_model = model
+                st.session_state.model_name = model_option
 
-            start_time = time.time()
-            # 2. Fit the model using the processed dataset
-            model.fit(data_reader)  # type: ignore
-            end_time = time.time()
-            training_time = end_time - start_time
-
-            # 3. Store the trained model in session state for the next page
-
-            st.session_state.trained_model = model  # type: ignore
-            st.session_state.model_name = model_option
-
-            st.success(
-                f"✅ **{model_option}** model trained successfully in {training_time:.2f} seconds!"
-            )
+                st.success(
+                    f"✅ **{model_option}** model trained successfully in {training_time:.2f} seconds!"
+                )
 
         except Exception as e:
             st.error(f"An error occurred during model training: {e}")
@@ -755,6 +760,7 @@ if "trained_model" in st.session_state:
         # Parameters
         col1, col2 = st.columns(2)
         with col1:
+            test_size = 0.2  # Default value
             if eval_method == "Train/Test Split (Fast)":
                 test_size = st.slider("Test Set Size (%)", 10, 30, 20) / 100
             eval_top_n = st.number_input("Top-N for evaluation", 1, 20, 10)
@@ -773,97 +779,39 @@ if "trained_model" in st.session_state:
                 try:
                     # Get the model configuration for re-instantiation
                     model_name = st.session_state.model_name
+                    data_reader = st.session_state.data_reader
 
                     # Re-instantiate model with same parameters
-                    if model_name == "ALS":
-                        eval_model = ALS(
-                            latent_dim=latent_dim, reg_term=reg_term, epochs=epochs
-                        )
-                    elif model_name == "BPR":
-                        eval_model = BPR(
-                            latent_dim=latent_dim,
-                            reg_term=reg_term,
-                            epochs=epochs,
-                            learning_rate=learning_rate,
-                        )
-                    elif model_name == "Autoencoder":
-                        eval_model = ExplAutoencoderTorch(
-                            learning_rate=learning_rate,
-                            weight_decay=weight_decay,
-                            hidden_layer_features=hidden_layer_features,
-                            epochs=epochs,
-                            cuda=cuda,
-                            optimizer_name=optimizer_name,
-                            positive_threshold=positive_threshold,
-                            knn=knn,
-                            expl=expl,
-                        )
-                    elif model_name == "EMF":
-                        eval_model = EMFModel(
-                            learning_rate=learning_rate,
-                            reg_term=reg_term,
-                            expl_reg_term=expl_reg_term,
-                            latent_dim=latent_dim,
-                            epochs=epochs,
-                            positive_threshold=positive_threshold,
-                            knn=knn,
-                        )
-                    elif model_name == "GMF":
-                        eval_model = GMFModel(
-                            learning_rate=learning_rate,
-                            weight_decay=weight_decay,
-                            latent_dim=latent_dim,
-                            epochs=epochs,
-                            num_negative=num_negative,
-                            batch_size=batch_size,
-                            cuda=cuda,
-                            optimizer_name=optimizer_name,
-                        )
-                    elif model_name == "MLP":
-                        eval_model = MLPModel(
-                            learning_rate=learning_rate,
-                            weight_decay=weight_decay,
-                            latent_dim=latent_dim,
-                            epochs=epochs,
-                            num_negative=num_negative,
-                            batch_size=batch_size,
-                            cuda=cuda,
-                            optimizer_name=optimizer_name,
-                        )
-                    elif model_name == "KNN":
-                        eval_model = KNNBasic(
-                            k=k_neighbors,
-                            min_k=min_k_neighbors,
-                            sim_options={
-                                "name": similarity_type,
-                                "user_based": boolean_user_based,
-                            },
-                        )
-                    elif model_name == "SVD":
-                        eval_model = SVD(
-                            n_factors=n_factors,
-                            n_epochs=n_epochs,
-                            lr=learning_rater,
-                            reg=reg,
-                            init_mean=init_mean,
-                            init_std=init_std,
-                            random_state=random_state,
-                            early_stopping=early_stopping,
-                        )
+                    if model_option == "ALS":
+                        eval_model = ALS(**model_params)
+                    elif model_option == "BPR":
+                        eval_model = BPR(**model_params)
+                    elif model_option == "Autoencoder":
+                        eval_model = ExplAutoencoderTorch(**model_params)
+                    elif model_option == "EMF":
+                        eval_model = EMFModel(**model_params)
+                    elif model_option == "GMF":
+                        eval_model = GMFModel(**model_params)
+                    elif model_option == "MLP":
+                        eval_model = MLPModel(**model_params)
+                    elif model_option == "KNN":
+                        eval_model = KNNBasic(**model_params)
+                    elif model_option == "SVD":
+                        eval_model = SVD(**model_params)
                     else:
                         st.error(f"Evaluation not implemented for {model_name}")
                         st.stop()
 
                     # Run the appropriate evaluation
                     if eval_method == "Leave-One-Out (Thorough)":
-                        evaluation_scores = run_leave_one_out_evaluation_improved(
-                            data_reader=st.session_state.data_reader,
+                        evaluation_scores = run_leave_one_out_evaluation(
+                            data_reader=data_reader,
                             model=eval_model,
                             top_n=eval_top_n,
                         )
                     else:  # Train/Test Split
                         evaluation_scores = run_evaluation_with_proper_split(
-                            data_reader=st.session_state.data_reader,
+                            data_reader=data_reader,
                             model=eval_model,
                             test_size=test_size,
                             top_n=eval_top_n,
