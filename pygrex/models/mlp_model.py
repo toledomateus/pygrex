@@ -160,11 +160,18 @@ class MLPModel(PyTorchModel):
     def forward(self, user_indices, item_indices):
         user_embedding = self.embedding_user(user_indices)
         item_embedding = self.embedding_item(item_indices)
-        # concat latent vector
 
-        # this is needed because cat does not support broadcasting.
-        if user_embedding.size()[0] == 1:
-            user_embedding = user_embedding.repeat(item_embedding.size()[0], 1)
+        # Ensure embeddings are 2D [batch_size, embedding_dim]
+        if user_embedding.dim() == 3:
+            user_embedding = user_embedding.squeeze(1)
+        if item_embedding.dim() == 3:
+            item_embedding = item_embedding.squeeze(1)
+
+        # This is needed because cat does not support broadcasting.
+        if user_embedding.size(0) == 1 and item_embedding.size(0) > 1:
+            user_embedding = user_embedding.repeat(item_embedding.size(0), 1)
+        elif item_embedding.size(0) == 1 and user_embedding.size(0) > 1:
+            item_embedding = item_embedding.repeat(user_embedding.size(0), 1)
 
         element_concat = torch.cat((user_embedding, item_embedding), 1)
         concat = self.affine_output(element_concat)

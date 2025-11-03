@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 # Import the class to be tested
 from pygrex.data_reader.data_reader import DataReader
-from pygrex.evaluator.sliding_window_evaluator import SlidingWindowEvaluator
+from pygrex.utils.sliding_window_ranker import SlidingWindowRanker
 
 
 @pytest.fixture
@@ -19,6 +19,7 @@ def mock_data_reader():
             "userId": [1, 1, 2, 2, 3, 3, 4],
             "itemId": [101, 102, 101, 103, 102, 104, 105],
             "rating": [4.0, 3.5, 5.0, 2.0, 4.5, 3.0, 3.8],
+            "timestamp": [1700000000, 1700600000, 1701200000, 1701800000, 1702400000, 1703000000, 1703600000],
         }
     )
 
@@ -34,9 +35,9 @@ def mock_data_reader():
 
 @pytest.fixture
 def evaluator():
-    """Create a SlidingWindowEvaluator instance for testing."""
+    """Create a SlidingWindowRanker instance for testing."""
     config = {"test_param": "test_value"}
-    return SlidingWindowEvaluator(config)
+    return SlidingWindowRanker(config)
 
 
 @pytest.fixture
@@ -185,10 +186,11 @@ class TestSlidingWindowEvaluator:
         members = [1, 2, 3, 4]
 
         # Test with default weights
-        ranked_items = evaluator.generate_ranked_items(
+        ranked_items, metrics = evaluator.generate_ranked_items(
             all_rated_items, mock_data_reader, members
         )
         assert isinstance(ranked_items, list)
+        assert isinstance(metrics, dict)
         assert len(ranked_items) == len(all_rated_items)
         assert set(ranked_items) == set(all_rated_items)
 
@@ -200,10 +202,11 @@ class TestSlidingWindowEvaluator:
             "relevance": 1.5,
             "trend": 0.0,
         }
-        ranked_items_custom = evaluator.generate_ranked_items(
+        ranked_items_custom, metrics_custom = evaluator.generate_ranked_items(
             all_rated_items, mock_data_reader, members, custom_weights
         )
         assert isinstance(ranked_items_custom, list)
+        assert isinstance(metrics_custom, dict)
         assert len(ranked_items_custom) == len(all_rated_items)
 
         # Test without group predictions set
@@ -213,9 +216,9 @@ class TestSlidingWindowEvaluator:
 
     def test_evaluate_not_implemented(self, evaluator, mock_data_reader):
         """Test that the evaluate method is defined but not implemented."""
-        # The evaluate method should be defined but returns None (pass)
+        # The evaluate method returns an empty dict placeholder
         result = evaluator.evaluate(mock_data_reader)
-        assert result is None
+        assert result == {}
 
 
 # Additional tests for edge cases

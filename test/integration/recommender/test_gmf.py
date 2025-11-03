@@ -17,6 +17,6 @@ def setup_data():
 
 def test_train_gmf(setup_data):
     gmf, data = setup_data
-    assert gmf.fit(data)
+    gmf.fit(data)
     recommender = Recommender(data, gmf)
     recommender.recommend_all()

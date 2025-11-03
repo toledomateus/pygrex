@@ -5,7 +5,7 @@ import pandas as pd
 from unittest.mock import Mock, MagicMock
 import logging
 
-from pygrex.explain.rule_based_group_rec_explainer import RuleBasedGroupRecExplainer
+from pygrex.explain.groups.rule_based_group_rec_explainer import RuleBasedGroupRecExplainer
 
 
 """Test cases for RuleBasedGroupRecExplainer class."""

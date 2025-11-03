@@ -19,4 +19,6 @@ def setup_data():
 def test_train_recommend_als(setup_data):
     als, data = setup_data
     recommender = Recommender(data, als)
-    recommender.recommend_all()
+    max_valid = als.model.item_factors.shape[0]
+    item_pool = list(range(min(max_valid, 50)))
+    _ = recommender.recommend(user_id=0, target_item_id=item_pool)

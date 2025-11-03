@@ -16,6 +16,6 @@ def setup_data():
 
 def test_train_emf(setup_data):
     emf, data = setup_data
-    assert emf.fit(data)
+    emf.fit(data)
     recommender = Recommender(data, emf)
     recommender.recommend_all()

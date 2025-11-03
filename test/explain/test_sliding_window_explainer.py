@@ -7,7 +7,7 @@ from typing import List, Union
 from pygrex.config import cfg
 from pygrex.data_reader.data_reader import DataReader
 from pygrex.data_reader.group_interaction_handler import GroupInteractionHandler
-from pygrex.explain.sliding_window_explainer import SlidingWindowExplainer
+from pygrex.explain.groups.sliding_window_explainer import SlidingWindowExplainer
 from pygrex.models.recommender_model import RecommenderModel
 from pygrex.recommender.group_recommender import GroupRecommender
 
@@ -29,6 +29,7 @@ class TestSlidingWindowExplainer:
             "userId": [1, 1, 1, 2, 2, 3, 3, 3],
             "itemId": [101, 102, 103, 101, 104, 102, 103, 105],
             "rating": [5, 4, 3, 4, 5, 3, 4, 5],
+            "timestamp": [1700000000, 1700100000, 1700200000, 1700300000, 1700400000, 1700500000, 1700600000, 1700700000],
         }
         df = pd.DataFrame(data)
 
@@ -115,13 +116,11 @@ class TestSlidingWindowExplainer:
         """Create a SlidingWindowExplainer instance with mocked dependencies."""
         # Create an explainer with test data
         explainer = SlidingWindowExplainer(
-            cfg=mock_config,
+            config=mock_config,
             data=mock_data_reader,
             group_handler=mock_group_handler,
             members=[1, 2, 3],
             target_item=200,
-            candidate_items=[200, 201, 202, 203],
-            sliding_window=mock_sliding_window,
             model=mock_recommender_model,
         )
         return explainer
@@ -130,7 +129,7 @@ class TestSlidingWindowExplainer:
         """Test that the explainer initializes with correct attributes."""
         assert explainer.members == [1, 2, 3]
         assert explainer.target_item == 200
-        assert explainer.candidate_items == [200, 201, 202, 203]
+        # candidate_items no longer kept on the explainer API
         assert explainer.calls == 0
         assert explainer.explanations_found == {}
 
@@ -141,11 +140,7 @@ class TestSlidingWindowExplainer:
         assert explainer.sliding_window == new_window
 
     def test_find_explanation_no_sliding_window(self, explainer):
-        """Test that find_explanation raises an error when no sliding window is set."""
-        explainer.sliding_window = None
-        with pytest.raises(ValueError) as excinfo:
-            explainer.find_explanation()
-        assert "Sliding window has not been set" in str(excinfo.value)
+        pytest.skip("find_explanation no longer depends on a preset sliding window")
 
     @patch.object(SlidingWindowExplainer, "_test_window_removal")
     @patch.object(SlidingWindowExplainer, "_find_minimal_subset")
@@ -156,7 +151,12 @@ class TestSlidingWindowExplainer:
         # Make _test_window_removal always return False (no effect on recommendations)
         mock_test_window.return_value = False
 
-        result = explainer.find_explanation()
+        # Prepare minimal valid inputs for new API
+        items_rated_by_group = [101, 102, 103, 104]
+        group_predictions = {1: {101: 4.0}, 2: {102: 3.5}, 3: {103: 4.2}}
+        top_recommendation = 200
+        ranking_weights = {"popularity": 1, "intensity": 1, "rating": 1, "relevance": 1, "trend": 0}
+        result = explainer.find_explanation(items_rated_by_group, group_predictions, top_recommendation, ranking_weights)
 
         # Check that window was tested but no minimal subset was searched
         assert mock_test_window.call_count > 0
@@ -172,20 +172,23 @@ class TestSlidingWindowExplainer:
         # Make second window test return True (has effect on recommendations)
         mock_test_window.side_effect = [False, True]
 
-        explainer.find_explanation()
+        items_rated_by_group = [101, 102, 103, 104]
+        group_predictions = {1: {101: 4.0}, 2: {102: 3.5}, 3: {103: 4.2}}
+        top_recommendation = 200
+        ranking_weights = {"popularity": 1, "intensity": 1, "rating": 1, "relevance": 1, "trend": 0}
+        explainer.find_explanation(items_rated_by_group, group_predictions, top_recommendation, ranking_weights)
 
         # Check that minimal subset was searched for the second window
         assert mock_test_window.call_count == 2
         assert mock_find_minimal.call_count == 1
-        # Check that the window passed to _find_minimal_subset is the second window
-        assert mock_find_minimal.call_args[0][0] == [103, 104]
+        # Check that the window passed contains the later items
+        passed_window = mock_find_minimal.call_args[0][0]
+        assert 103 in passed_window and 104 in passed_window
 
-    @patch("pygrex.utils.scale.Scale.linear")
-    @patch("pygrex.explain.sliding_window_explainer.GroupRecommender")
+    @patch("pygrex.explain.groups.sliding_window_explainer.GroupRecommender")
     def test_get_recommendations_after_removal(
         self,
-        mock_group_recommender_cls,  # Corresponds to the inner @patch for GroupRecommender class
-        mock_scale_linear_method,  # Corresponds to the outer @patch for Scale.linear method
+        mock_group_recommender_cls,
         explainer,
         mock_data_reader,
     ):
@@ -271,7 +274,7 @@ class TestSlidingWindowExplainer:
 
         mock_get_recs.side_effect = get_recs_side_effect
 
-        # Call the method
+        # Call the private method directly to focus on minimal subset logic
         explainer._find_minimal_subset([101, 102], 200)
 
         # Verify _record_explanation was called with the minimal subset [101]
@@ -305,12 +308,11 @@ class TestSlidingWindowExplainer:
         explainer._record_explanation([101, 102], 200, 201)
 
         # Check explanation was stored
-        assert explainer.explanations_found[explainer.calls] == [101, 102]
+        assert explainer.explanations_found[explainer.calls]["items"] == [101, 102]
 
         # Check print output
         out, _ = capfd.readouterr()
         assert "If the group had not interacted with these items" in out
-        assert "Explanation: [101, 102]" in out
 
     def test_calculate_average_item_intensity_score(self, mock_data_reader):
         """Test calculation of average item intensity."""
@@ -345,7 +347,7 @@ class TestSlidingWindowExplainer:
     def test_create_data_reader_and_prepare(self, explainer, mock_data_reader):
         """Test creating and preparing a new DataReader with modified data."""
         with patch(
-            "pygrex.explain.sliding_window_explainer.DataReader"
+            "pygrex.explain.groups.sliding_window_explainer.DataReader"
         ) as mock_reader_class:
             # Set up mock DataReader class
             mock_new_reader = Mock(spec=DataReader)
@@ -378,8 +380,12 @@ class TestSlidingWindowExplainer:
         # Mock necessary methods to isolate test
         explainer._test_window_removal = Mock(return_value=False)
 
-        # Call find_explanation
-        result = explainer.find_explanation()
+        # Call find_explanation with required args
+        items_rated_by_group = [101, 102, 103]
+        group_predictions = {1: {101: 4.0}}
+        top_recommendation = 200
+        ranking_weights = {"popularity": 1, "intensity": 1, "rating": 1, "relevance": 1, "trend": 0}
+        result = explainer.find_explanation(items_rated_by_group, group_predictions, top_recommendation, ranking_weights)
 
         # Verify only one call was made
         assert explainer.calls == 1

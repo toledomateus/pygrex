@@ -68,9 +68,10 @@ class TestGroupRecommender:
         )
 
         # Act
-        group_recommender.setup_recommendation(
-            mock_model, members, mock_data_reader, aggregation_strategy
-        )
+        with patch.object(GroupRecommender, "_get_max_valid_item_id", return_value=100000):
+            group_recommender.setup_recommendation(
+                mock_model, members, mock_data_reader, aggregation_strategy
+            )
 
         # Assert
         assert group_recommender._members == members
@@ -108,13 +109,14 @@ class TestGroupRecommender:
         )
 
         # Act
-        group_recommender.setup_recommendation(
-            mock_model,
-            members,
-            mock_data_reader,
-            aggregation_strategy,
-            most_respected_person,
-        )
+        with patch.object(GroupRecommender, "_get_max_valid_item_id", return_value=100000):
+            group_recommender.setup_recommendation(
+                mock_model,
+                members,
+                mock_data_reader,
+                aggregation_strategy,
+                most_respected_person,
+            )
 
         # Assert
         assert (
@@ -298,22 +300,21 @@ class TestGroupRecommender:
             lambda x: x + 1000
         )  # Simple mapping function
 
-        mock_model.predict.side_effect = itertools.cycle(
-            [3.5, 4.2]
-        )  # Predictions for the two items
+        mock_model.predict.return_value = [3.5, 4.2]  # Predictions for the two items
 
         # Mock Scale.linear
         with patch(
             "pygrex.utils.scale.Scale.linear", return_value=np.array([3.0, 4.0])
         ) as mock_scale:
             # Act
-            result = group_recommender.generate_recommendation(
-                mock_model, member, item_pool, mock_data_reader
-            )
+            with patch.object(GroupRecommender, "_get_max_valid_item_id", return_value=100000):
+                result = group_recommender.generate_recommendation(
+                    mock_model, member, item_pool, mock_data_reader
+                )
 
         # Assert
         mock_data_reader.get_new_user_id.assert_called_once_with(member_id_int)
-        assert mock_model.predict.call_count == 2
+        assert mock_model.predict.call_count == 1
         mock_scale.assert_called_once()
 
         # Check if the result dict has the expected structure: {original_item_id: scaled_score}

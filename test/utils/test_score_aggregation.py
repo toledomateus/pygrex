@@ -379,7 +379,7 @@ class TestScoreAggregatorIntegration(unittest.TestCase):
             AggregationStrategy.LEAST_MISERY,
             AggregationStrategy.MOST_PLEASURE,
             AggregationStrategy.MOST_RESPECTED_PERSON,
-            AggregationStrategy.AVG_PREFERENCES,
+            AggregationStrategy.AVG_PREDICTIONS,
             AggregationStrategy.ADDITIVE_UTILITARIAN,
             AggregationStrategy.MULTIPLICATIVE,
         ]

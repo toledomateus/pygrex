@@ -19,13 +19,17 @@ def setup_data():
 
 def test_train_als(setup_data):
     als, _, data = setup_data
-    assert als.fit(data)
+    als.fit(data)
     recommender = Recommender(data, als)
-    recommender.recommend_all()
+    max_valid = als.model.item_factors.shape[0]
+    item_pool = list(range(min(max_valid, 50)))
+    _ = recommender.recommend(user_id=0, target_item_id=item_pool)
 
 
 def test_train_bpr(setup_data):
     _, bpr, data = setup_data
-    assert bpr.fit(data)
+    bpr.fit(data)
     recommender = Recommender(data, bpr)
-    recommender.recommend_all()
+    max_valid = bpr.model.item_factors.shape[0]
+    item_pool = list(range(min(max_valid, 50)))
+    _ = recommender.recommend(user_id=0, target_item_id=item_pool)

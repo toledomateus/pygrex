@@ -187,6 +187,9 @@ class ExplAutoencoderTorch(RecommenderModel, nn.Module):
                 "User and item IDs must be integers or strings that can be converted to integers."
             )
 
+        single_user = isinstance(user_id, int)
+        single_item = isinstance(item_id, int)
+
         if isinstance(user_id, int):
             user_id = [user_id]
         if isinstance(item_id, int):
@@ -194,13 +197,27 @@ class ExplAutoencoderTorch(RecommenderModel, nn.Module):
 
         with torch.no_grad():
             assert self.user_item_dict is not None, "The model has not been fitted yet."
-            rating = self.user_item_dict[user_id]
+
+            # Collect ratings for all users
+            ratings_list = []
+            for uid in user_id:
+                rating = self.user_item_dict[uid]  # Pass scalar user_id to dict
+                ratings_list.append(rating)
+
+            rating = torch.stack(ratings_list)
             rating = rating.float()
             if self.use_gpu:
                 rating = rating.cuda()
             pred = self.forward(rating).cpu()
             predictions = pred[:, item_id].tolist()
+
             # Flatten the nested list if it contains only one user's predictions
-            if len(predictions) == 1:
+            if single_user and single_item:
+                return (
+                    predictions[0][0]
+                    if isinstance(predictions[0], list)
+                    else predictions[0]
+                )
+            elif single_user:
                 return predictions[0]
             return predictions

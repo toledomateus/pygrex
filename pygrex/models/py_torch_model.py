@@ -52,7 +52,7 @@ class PyTorchModel(RecommenderModel, torch.nn.Module):
             user_id = [user_id]
         if isinstance(item_id, int):
             item_id = [item_id]
-        user_id = torch.LongTensor([user_id])
+        user_id = torch.LongTensor(user_id)
         item_id = torch.LongTensor(item_id)
         with torch.no_grad():
             if self._cuda:
