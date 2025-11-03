@@ -38,16 +38,10 @@ class MFImplicitModel(RecommenderModel):
             raise RuntimeError(
                 "The model has not been initialized. Please use a specific subclass like ALS or BPR."
             )
-        num_user_for_shape = (
-            self.total_users
-            if self.total_users is not None
-            else data.dataset["userId"].max() + 1
-        )
-        num_item_for_shape = (
-            self.total_items
-            if self.total_items is not None
-            else data.dataset["itemId"].max() + 1
-        )
+        num_user_for_shape = data.dataset["userId"].max() + 1
+        num_item_for_shape = data.dataset["itemId"].max() + 1
+        self.total_users = num_user_for_shape
+        self.total_items = num_item_for_shape
 
         item_user_data = self.rearrange_dataset(
             ds=data.dataset,

@@ -68,6 +68,15 @@ class GroupRecommender:
             item_ids,  # type: ignore
             members,  # type: ignore
         )
+        
+        # Filter item_pool to only include IDs that are valid for the model
+        # This prevents out-of-bounds errors when the model was trained with a different
+        # number of items than what's currently in the dataset
+        max_item_id = self._get_max_valid_item_id(model)
+        # Convert to int array and filter out invalid IDs
+        item_pool_int = self._item_pool.astype(int)
+        valid_mask = (item_pool_int >= 0) & (item_pool_int < max_item_id)
+        self._item_pool = item_pool_int[valid_mask]
 
         # Individual Preference Collection: Generate predictions for each group member
         self._group_predictions = self._generate_group_predictions()
@@ -152,6 +161,26 @@ class GroupRecommender:
 
         return rankings
 
+    def _get_max_valid_item_id(self, model: RecommenderModel) -> int:
+        """
+        Get the maximum valid item ID for the given model.
+        
+        Args:
+            model: The recommendation model
+            
+        Returns:
+            Maximum valid item ID (exclusive, so valid IDs are [0, max_item_id))
+        """
+        # For implicit models (MFImplicitModel), check item_factors shape
+        if hasattr(model, 'model') and model.model is not None:
+            if hasattr(model.model, 'item_factors'):
+                return model.model.item_factors.shape[0]
+        # Check if model has total_items attribute (set during fit)
+        if hasattr(model, 'total_items') and model.total_items is not None:
+            return model.total_items
+        # Fallback to data.num_item if model shape is not available
+        return self.data.num_item
+    
     def get_non_interacted_items_for_recommendation(
         self,
         data: DataReader,
@@ -211,6 +240,19 @@ class GroupRecommender:
 
         if new_member_id is None:
             return {}  # Return empty predictions for this user
+
+        # Additional safety check: filter item_pool to valid IDs before prediction
+        # This provides a second layer of protection in case filtering was missed earlier
+        max_valid_item_id = self._get_max_valid_item_id(model)
+        if isinstance(item_pool, np.ndarray):
+            item_pool = item_pool.astype(int)
+            item_pool = item_pool[(item_pool >= 0) & (item_pool < max_valid_item_id)]
+        elif isinstance(item_pool, list):
+            item_pool = [int(item) for item in item_pool if 0 <= int(item) < max_valid_item_id]
+        
+        if len(item_pool) == 0:
+            print(f"No valid items found for user {new_member_id}. Returning empty predictions.")
+            return {}  # Return empty predictions if no valid items
 
         raw_predictions = model.predict(new_member_id, item_pool)  # type: ignore
         if not isinstance(raw_predictions, (list, np.ndarray)):

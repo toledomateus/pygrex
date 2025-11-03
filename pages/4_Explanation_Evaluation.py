@@ -517,7 +517,7 @@ if chosen_explainer == explainer_options[0]:
                 )
 
                 explainer = SlidingWindowExplainer(
-                    cfg=None,
+                    config=None,
                     data=data_reader,
                     group_handler=group_handler,
                     members=group_members,

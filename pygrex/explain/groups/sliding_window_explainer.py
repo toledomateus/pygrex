@@ -283,8 +283,8 @@ class SlidingWindowExplainer:
             f"the item of interest {original_rec} would not have appeared on the recommendation list;\n"
             f"instead, {new_rec} would have been recommended."
         )
-        print("")
-        print(f"Explanation: {explanation_items} : found at call: {self.calls}")
+        # 	print("")
+        #   print(f"Explanation: {explanation_items} : found at call: {self.calls}")
 
         # Calculate metrics for the explanation
         item_intensity = self._calculate_item_intensity(explanation_items)
@@ -301,7 +301,7 @@ class SlidingWindowExplainer:
 
         exp_size = len(explanation_items)
 
-        print(f"{exp_size}\t{self.calls}\t{item_intensity}\t{user_intensity}")
+        #   print(f"{exp_size}\t{self.calls}\t{item_intensity}\t{user_intensity}")
 
     def _calculate_item_intensity(self, items: List[Union[str, int]]) -> List[float]:
         """

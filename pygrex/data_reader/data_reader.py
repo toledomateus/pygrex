@@ -230,6 +230,9 @@ class DataReader:
         dataset["itemId"] = dataset["itemId"].astype(int)
         self._dataset = dataset
 
+        self._num_user = self._dataset["userId"].max() + 1
+        self._num_item = self._dataset["itemId"].max() + 1
+
     def binarize(
         self, binary_threshold: float = 1, inplace: bool = True
     ) -> Optional[pd.DataFrame]:

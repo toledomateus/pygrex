@@ -14,6 +14,11 @@ base:
       sep: ','
       skiprows: 1
       names: [ 'userId', 'itemId', 'rating', 'timestamp']
+    ml32m:
+      filepath_or_buffer: 'datasets/ml-32m/ratings.csv'
+      sep: ','
+      skiprows: 1
+      names: [ 'userId', 'itemId', 'rating', 'timestamp']
     ml100k:
         filepath_or_buffer: 'datasets/ml-100k/u.data'
         sep: '\t'
@@ -23,6 +28,8 @@ base:
       filepath_or_buffer: 'datasets/ml-1m/ratings.dat'
       sep: '::'
       names: [ 'userId', 'itemId', 'rating', 'timestamp' ]
+    tags:
+        tags_file: 'datasets/stratigis/tags.csv'
   model:
     gmf:
       learning_rate: 0.005
@@ -47,11 +54,12 @@ base:
       latent_dim: 100
       epochs: 10
       reg_term: 0.001
+
     bpr:
       learning_rate: 0.01
       latent_dim: 100
       epochs: 10
-      reg_term: 0.0
+      reg_term: 0.001
     emf:
       learning_rate: 0.01
       reg_term: 0.001
@@ -78,3 +86,11 @@ base:
       positive_threshold: 3
       knn: 10
       expl: true
+  explainer:
+    lore4groups:
+      n_similar_for_tree: 100
+      rating_threshold_for_like: 3.0
+      max_tree_depth: 5
+      top_n_labels: 5000
+      min_rating_for_history: 1.0
+      similarity_threshold: 0.1      
