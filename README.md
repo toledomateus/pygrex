@@ -3,7 +3,7 @@
 <div align="center">
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)](https://github.com/toledomateus/pygrex) 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE-md)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE.md)
 [![GitHub Issues](https://img.shields.io/github/issues/toledomateus/py-grex.svg)](https://github.com/toledomateus/py-grex/issues) 
 [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/toledomateus/py-grex.svg)](https://github.com/toledomateus/py-grex/pulls)
 [![PyPI version](https://badge.fury.io/py/pygrex.svg)](https://badge.fury.io/py/pygrex)
@@ -16,27 +16,13 @@
     <br> 
 </p>
 
-
-<<<<<<< HEAD
-=======
-Experience PY-GREX without any installation through our interactive web application, built with Streamlit.
-
->>>>>>> 28e87e432c21f50e59cdd96ae3ba521b078057af
 **➡️ [Platform live demo](https://pygrex.streamlit.app/)**
 
 ![Live Demo of the PY-GREX App](assets/pygrex-video-demo.gif)
 
 ---
 
-<<<<<<< HEAD
 ## About
-=======
-## 🧐 About
-
-Recommender systems heavily shape our digital experiences. Consequently, there's a growing demand for insight into how these systems generate predictions, not just for individuals but also for groups of users.
-
-Recognizing that explanations enhance trust, efficiency, and even persuasive power, researchers have actively pursued this area. Yet, the field lacks a standard, accessible toolkit for implementing and evaluating these techniques, especially for the nuanced domain of group settings.
->>>>>>> 28e87e432c21f50e59cdd96ae3ba521b078057af
 
 PY-GREX addresses this critical need, offering a modular Python toolkit equipped with multiple state-of-the-art explainability algorithms to facilitate research and development in eXplainable AI (XAI) for Recommender Systems.
 
@@ -58,15 +44,7 @@ PY-GREX provides a modular, end-to-end pipeline for explainable group recommenda
     - Neural Collaborative Filtering (NCF)
     - Deep Autoencoder
   - **Memory-Based**:
-<<<<<<< HEAD
     - Item-Based K-Nearest Neighbors
-=======
-    - User-Based K-Nearest Neighbors
-    - Item-Based K-Nearest Neighbors
-  - **Other Models**:
-    - Item2Vec
-    - MF-Implicit
->>>>>>> 28e87e432c21f50e59cdd96ae3ba521b078057af
 
 - **Group Aggregation Strategies**:
   - **Consensus-Based**:
@@ -172,8 +150,6 @@ For detailed examples, check out the notebooks in the `notebooks/` directory:
 - `sliding_window_toy_example.ipynb`: Shows how to use counterfactual explanations with the Sliding Window method
 - `lore4groups_toy_example.ipynb`: Illustrates local rule-based explanations using LORE4Groups
 
-Each notebook provides comprehensive examples with real datasets and detailed explanations of the methods.
-
 ---
 
 ## 🤝 Contributing
@@ -195,11 +171,17 @@ If you have a suggestion that would make this better, please fork the repo and c
 If you use PY-GREX in your research, please cite our paper:
 
 ```bibtex
-@article{pygrex2025,
-  title={PY-GREX: A Python Toolkit for Explainable Group Recommender Systems},
-  author={[Authors]},
-  journal={[Journal]},
-  year={2025}
+@inproceedings{Toledo2026GREX,
+  author    = {Toledo, Mateus and Yera, Raciel and Barranco, Manuel J. and Dutta, Bapi},
+  title     = {{GREX}: A Platform for Supporting Explanations in Group Recommender Systems},
+  booktitle = {Intelligent Data Engineering and Automated Learning -- {IDEAL} 2025},
+  year      = {2026},
+  publisher = {Springer Nature Switzerland AG},
+  address   = {Cham},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {16239},
+  pages     = {1--13},
+  doi       = {10.1007/978-3-032-10489-2_9}
 }
 ```
 ---
