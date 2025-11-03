@@ -17,13 +17,26 @@
 </p>
 
 
+<<<<<<< HEAD
+=======
+Experience PY-GREX without any installation through our interactive web application, built with Streamlit.
+
+>>>>>>> 28e87e432c21f50e59cdd96ae3ba521b078057af
 **➡️ [Platform live demo](https://pygrex.streamlit.app/)**
 
 ![Live Demo of the PY-GREX App](assets/pygrex-video-demo.gif)
 
 ---
 
+<<<<<<< HEAD
 ## About
+=======
+## 🧐 About
+
+Recommender systems heavily shape our digital experiences. Consequently, there's a growing demand for insight into how these systems generate predictions, not just for individuals but also for groups of users.
+
+Recognizing that explanations enhance trust, efficiency, and even persuasive power, researchers have actively pursued this area. Yet, the field lacks a standard, accessible toolkit for implementing and evaluating these techniques, especially for the nuanced domain of group settings.
+>>>>>>> 28e87e432c21f50e59cdd96ae3ba521b078057af
 
 PY-GREX addresses this critical need, offering a modular Python toolkit equipped with multiple state-of-the-art explainability algorithms to facilitate research and development in eXplainable AI (XAI) for Recommender Systems.
 
@@ -45,7 +58,15 @@ PY-GREX provides a modular, end-to-end pipeline for explainable group recommenda
     - Neural Collaborative Filtering (NCF)
     - Deep Autoencoder
   - **Memory-Based**:
+<<<<<<< HEAD
     - Item-Based K-Nearest Neighbors
+=======
+    - User-Based K-Nearest Neighbors
+    - Item-Based K-Nearest Neighbors
+  - **Other Models**:
+    - Item2Vec
+    - MF-Implicit
+>>>>>>> 28e87e432c21f50e59cdd96ae3ba521b078057af
 
 - **Group Aggregation Strategies**:
   - **Consensus-Based**:
