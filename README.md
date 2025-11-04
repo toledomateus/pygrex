@@ -4,8 +4,8 @@
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)](https://github.com/toledomateus/pygrex) 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE.md)
-[![GitHub Issues](https://img.shields.io/github/issues/toledomateus/py-grex.svg)](https://github.com/toledomateus/pygrex/issues) 
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/toledomateus/py-grex.svg)](https://github.com/toledomateus/pygrex/pulls)
+[![GitHub Issues](https://img.shields.io/github/issues/toledomateus/pygrex.svg)](https://github.com/toledomateus/pygrex/issues) 
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/toledomateus/pygrex.svg)](https://github.com/toledomateus/pygrex/pulls)
 [![PyPI version](https://badge.fury.io/py/pygrex.svg)](https://badge.fury.io/py/pygrex)
 
 </div>
