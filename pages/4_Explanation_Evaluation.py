@@ -1189,7 +1189,7 @@ elif chosen_explainer == explainer_options[2]:
             plot_bgcolor="white",  # TODO: ADAPT TO DARK MODE
         )
 
-        st.plotly_chart(fig, width="strech", key=f"decision_tree_{item_id}")
+        st.plotly_chart(fig, width="stretch", key=f"decision_tree_{item_id}")
 
     def evaluate_rule_for_item(
         rule: str, item_profiles: Dict, item_id: str, movie_genres: Optional[set] = None
