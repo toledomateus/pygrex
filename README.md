@@ -26,6 +26,8 @@
 
 PY-GREX addresses this critical need, offering a modular Python toolkit equipped with multiple state-of-the-art explainability algorithms to facilitate research and development in eXplainable AI (XAI) for Recommender Systems.
 
+This project was supported by the European Union’s Horizon Europe research and innovation program under the Marie Sklodowska-Curie Grant Agreement No.101106164
+
 ---
 
 ## 🚀 Features
